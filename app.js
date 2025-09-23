@@ -142,35 +142,57 @@ class BarcodeReader {
     }
     
     async scanBarcode() {
-        if (!this.isScanning) return;
+    if (!this.isScanning) return;
+    
+    try {
+        // Wait for video to be ready
+        if (this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
+            requestAnimationFrame(() => this.scanBarcode());
+            return;
+        }
+        
+        // Set canvas size to match video dimensions
+        this.canvas.width = this.video.videoWidth;
+        this.canvas.height = this.video.videoHeight;
+        
+        if (this.canvas.width === 0 || this.canvas.height === 0) {
+            requestAnimationFrame(() => this.scanBarcode());
+            return;
+        }
+        
+        // Draw current frame to canvas
+        this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+        
+        // Get image data
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         
         try {
-            // Set canvas size to match video
-            this.canvas.width = this.video.videoWidth;
-            this.canvas.height = this.video.videoHeight;
+            // Try to decode barcode using ZXing
+            const result = this.codeReader.decodeFromImageData(imageData);
             
-            // Draw current frame to canvas
-            this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-            
-            // Get image data
-            const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-            
-            // Try to decode barcode
-            const code = this.codeReader.decodeFromImageData(imageData);
-            
-            if (code) {
-                this.onBarcodeDetected(code);
+            if (result && result.text) {
+                console.log('Barcode found:', result.text);
+                this.onBarcodeDetected(result);
+                // Optional: stop scanning after detection
+                // this.stopScanning();
+                return;
             }
-            
-        } catch (error) {
-            // No barcode found, continue scanning
+        } catch (decodeError) {
+            // No barcode found in this frame, continue scanning
         }
         
-        // Continue scanning
-        if (this.isScanning) {
-            requestAnimationFrame(() => this.scanBarcode());
-        }
+    } catch (error) {
+        console.error('Scanning error:', error);
     }
+    
+    // Continue scanning at ~10 FPS for better performance
+    if (this.isScanning) {
+        setTimeout(() => {
+            requestAnimationFrame(() => this.scanBarcode());
+        }, 100);
+    }
+}
+
     
     onBarcodeDetected(result) {
         const barcodeData = result.text;
