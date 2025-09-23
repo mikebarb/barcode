@@ -32,16 +32,38 @@ class BarcodeReader {
     
     async getCameras() {
         try {
+            // First request camera permission to get accurate device list
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } 
+            });
+            stream.getTracks().forEach(track => track.stop()); // Stop immediately
+            
+            // Now enumerate devices
             const devices = await navigator.mediaDevices.enumerateDevices();
             this.cameras = devices.filter(device => device.kind === 'videoinput');
             
-            if (this.cameras.length > 1) {
+            console.log('Available cameras:', this.cameras.length);
+            console.log('Camera details:', this.cameras);
+            
+            // Show switch button if we detect multiple cameras OR on mobile devices
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (this.cameras.length > 1 || (isMobile && this.cameras.length >= 1)) {
                 this.switchCameraBtn.style.display = 'inline-block';
+                console.log('Switch camera button enabled');
             }
         } catch (error) {
             console.error('Error getting cameras:', error);
+            
+            // Fallback: Show switch button on mobile devices even if enumeration fails
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                this.switchCameraBtn.style.display = 'inline-block';
+                console.log('Switch camera button enabled (fallback for mobile)');
+            }
         }
     }
+
     
     bindEvents() {
         this.startBtn.addEventListener('click', () => this.startScanning());
