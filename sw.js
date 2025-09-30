@@ -2,10 +2,10 @@ const CACHE_NAME = 'barcode-reader-v1';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/app.js',
+    '/scanner.js',
     '/manifest.json',
     '/styles.css',
-    'https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js'
+    '/quagga.min.js'
 ];
 
 // Install event
