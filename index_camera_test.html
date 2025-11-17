@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<body>
+    <video id="video" autoplay playsinline width="640" style="border: 1px solid black;"></video>
+    <script>
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                console.log ("stream: ", stream);
+                document.getElementById('video').srcObject = stream;
+                console.log("Camera works! Stream active:", stream.active);
+            })
+            .catch(err => {
+                console.error("CAMERA ERROR:", err);
+                alert("Error: " + err.message);
+            });
+    </script>
+</body>

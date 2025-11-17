@@ -1,16 +1,9 @@
-
-//const SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrKQSOwGsXcboLdsgJL7ex8SQ7NWJbf254UEXHr1tXAwKtvyG-AJT2vIcnTLeOI_sJ/exec';
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrKQSOwGsXcboLdsgJL7ex8SQ7NWJbf254UEXHr1tXAwKtvyG-AJT2vIcnTLeOI_sJ/exec';
-const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
-
 // DOM elements
 const startButton = document.getElementById('startButton');
 const pauseButton = document.getElementById('pauseButton');
 const stopButton = document.getElementById('stopButton');
 const resultDisplay = document.getElementById('result');
 const codeDisplay = document.getElementById('code');
-const formatDisplay = document.getElementById('format');
 const errorDisplay = document.getElementById('error-msg');
 
 let isScanning = false;
@@ -42,25 +35,20 @@ const config = {
     },
     locate: true,
     frequency: 10,
-    debug: true,
-    multiple: false
+    debug: true
 };
 
 // Function to handle a detected barcode
 function onDetected(result) {
-    console.log("Detection event: ", result);
     if (isPaused) return; // Ignore detections when paused
     
     const code = result.codeResult.code;
     console.log("Barcode detected and confirmed: ", code);
-    const codeFormat = result.codeResult.format;
-    console.log("Barcode format: ", codeFormat);
-
+    
     // Display the result
     //resultDisplay.textContent = `Scanned: ${code}`;
     resultDisplay.textContent = `Barcode Detected - Click 'Resume' to scan again.`;
     codeDisplay.textContent = `Scanned: ${code}`;
-    formatDisplay.textContent = `Format: ${codeFormat}`;
     
     // Provide haptic feedback on supported devices (like iPhone)
     if (navigator.vibrate) {
@@ -70,81 +58,7 @@ function onDetected(result) {
     // Optional: Auto-pause after successful scan
     //alert("about to pause scanning");
     pauseScanning();
-
-    // store details locally
-    const transactionRow = [codeFormat, code, new Date().toISOString()];
-    console.log("Storing scanned data: ", transactionRow);
-
-    addTransaction(transactionRow);
-    console.log("Transaction stored.", getTransactions());
-
-    // store in google sheets on the web.
-    //syncTransactions();
-    //appendData(getTransactions()).then(response => {
-    //    console.log("Data appended to Google Sheets: ", response);
-    //});
-    //appendDataJSONP([transactionRow]);
-    appendDataJSONP(getTransactions());
-    const readSheetData = readDataJSONP();
-    console.log("Read sheet data: ", readSheetData);
-    console.log("test output");
-    console.log("Rows read from Google Sheets: ",  readSheetData.length);
 }
-
-// ------------Google Sheets writing and reading functions -----------------
-// Write data using JSONP
-async function appendDataJSONP(transactions) {
-  console.log("Initiating JSONP append request with transactions:", transactions);
-  client.appendData(transactions)
-    .then(result => {
-      console.log('Append Success:', result);
-      if (result.success) {
-        console.log('Google Sheets Data appended successfully.');
-      } else {
-        console.error('Google Sheets Failed to append data:', result.message);
-      }
-    })
-    .catch(error => {
-      console.error('Google Sheets Append Request Failed:', error);
-    });
-}
-//Read data using JSONP
-async function readDataJSONP() {
-    console.log("Initiating JSONP read request...");
-    try {
-        console.log('Starting JSONP read request...');
-        const result = await client.readData();
-        console.log ('Read Result: ', result);
-        if (result.success) {
-            console.log('Google Sheets Data retrieved successfully:', result.data);
-            return result.data;
-        } else {
-            console.error('Google Sheets Failed to retrieve data:', result.message);
-            return [];
-        }
-    } catch (error){
-        console.error('Google Sheets Read Request Failed:', error);
-        return [];
-    }
-}
-
-// ------------Transaction local storage and retrieval functions -----------------
-// Save scanned transaction to localStorage
-function addTransaction(transactionRow) {
-    let scans = JSON.parse(localStorage.getItem('scans')) || [];
-    scans.push(transactionRow);
-    localStorage.setItem('scans', JSON.stringify(scans));   
-}
-//Get all the transactions from localStorage
-function getTransactions() {
-    let scans = JSON.parse(localStorage.getItem('scans')) || [];
-    return scans;
-}       
-// Clear all stored transactions
-function clearTransactions() {
-    localStorage.removeItem('scans');
-}
-// ------------End of transaction local storage and retrieval functions -----------------
 
 // Update UI based on scanning state
 function updateUI() {
@@ -169,47 +83,32 @@ function updateUI() {
     }
 }
 
-// find the camera to be used for barcode scanning
-// returns cameraId - device id of found camera.
-async function findCamera(){
-    let cameraId;
+// Standard initialization function
+async function initScanner() {
+    //currentStream = null; // Reset on a fresh init
     // First, check for camera permissions and get a list of devices
     await navigator.mediaDevices.getUserMedia({ video: true });
-    // Get all available media devices
     const devices = await navigator.mediaDevices.enumerateDevices();
-    // Filter for video input devices (cameras)
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    console.log("Video devices found: ", videoDevices);
+    
+    // If multiple cameras are found, you can select one here.
+    // For a USB webcam, it will typically be the second device if a built-in cam exists.
 
+    let cameraId;
     if (videoDevices.length > 1) {
         // Prefer the USB webcam. Often the built-in cam is labeled "FaceTime" or "Integrated"
-        // On the PC, the usb camer used is called 'OBS Virtual Camera'
-        const obsCam = videoDevices.find(device =>
-            device.label.toLowerCase().includes('obs')
+        const usbCam = videoDevices.find(device => 
+            device.label.toLowerCase().includes('usb') || 
+            !device.label.toLowerCase().includes('facing')
         );
-        console.log("obsCam search result: ", obsCam);
-        //alert("usbCam: " + usbCam?.label);
-        // Find the rear camera - iOS typically labels rear camera with "back" in label
-        const rearCameraIphone = videoDevices.find(camera => 
-            camera.label.toLowerCase().includes('back') ||
-            camera.label.toLowerCase().includes('rear')
-        );
-        console.log("rearCameraIphone search result: ", rearCameraIphone);
-        //alert("rearCameraIphone: " + rearCameraIphone?.label);
-        cameraId = rearCameraIphone ? rearCameraIphone.deviceId : obsCam ? obsCam.deviceId : videoDevices[0].deviceId;
-        console.log(`Using video camera: ${obsCam?.label || videoDevices[0].label}`);
+        console.log('usbCam: ', usbCam);
+        cameraId = usbCam ? usbCam.deviceId : videoDevices[0].deviceId;
+        console.log(`Using video camera: ${usbCam?.label || videoDevices[0].label}`);
     } else {
         cameraId = videoDevices[0]?.deviceId;
         console.log(`Using other camera: ${videoDevices[0]?.label || 'Default'}`);
     }
-    return cameraId;
-}
 
-// Standard initialization function
-async function initScanner() {
-    const cameraId = await findCamera();
-    console.log("Selected camera ID: ", cameraId);  
-    // put this cameraId into the existing config
     config.inputStream.constraints.deviceId = cameraId;
     console.log("config_updated: ", config);
 
@@ -234,7 +133,6 @@ function startScanning() {
     resultDisplay.textContent = "Starting camera...";
     errorDisplay.style.display = 'none';
     codeDisplay.textContent = "Code Area";
-    formatDisplay.textContent = " ";
 }
 
 // Function to pause scanning (keep camera on, stop processing)
@@ -255,7 +153,7 @@ function pauseScanning() {
     //}
 
     // This stops the CPU-intensive analysis but keeps the camera stream alive!
-    Quagga.pauseProcessing();
+    Quagga.pause();
     // Also remove the detector to be safe
     //Quagga.offDetected(onDetected); // Remove detection listener
     
@@ -270,10 +168,9 @@ function resumeScanning() {
     if (!isScanning || !isPaused) return;
 
     codeDisplay.textContent = "Code Area";
-    formatDisplay.textContent = " ";
     // Restart the processing on the existing, still-active camera stream
     //Quagga.resume();
-    Quagga.resumeProcessing();
+    Quagga.play();
 
     // Re-attach the detector
     Quagga.onDetected(onDetected); // Re-add detection listener

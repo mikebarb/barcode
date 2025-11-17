@@ -5,7 +5,7 @@ const urlsToCache = [
     '/scanner.js',
     '/manifest.json',
     '/styles.css',
-    '/quagga.min.js'
+    '/quagga.js'
 ];
 
 // Install event

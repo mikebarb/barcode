@@ -61,6 +61,12 @@ button:disabled {
     background-color: #333;
     min-height: 20px;
 }
+#code {
+    padding: 15px;
+    font-size: 18px;
+    background-color: #333;
+    min-height: 20px;
+}
 #error-msg {
     color: #ff3b30; /* iOS red */
     padding: 10px;
@@ -81,3 +87,4 @@ button:disabled {
 .status-stopped {
     background-color: #ff3b30; /* iOS red */
 }
+
