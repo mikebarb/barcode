@@ -2,7 +2,10 @@ const CACHE_NAME = 'barcode-reader-v1';
 const urlsToCache = [
     '/',
     '/index.html',
+    '/main.js',
     '/scanner.js',
+    '/sheets-client.js',
+    './local-storage.js',
     '/manifest.json',
     '/styles.css',
     '/quagga.js'

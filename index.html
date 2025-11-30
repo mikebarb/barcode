@@ -11,7 +11,79 @@
 </head>
 <body>
     <div id="debug.detection"></div>
-    <div id="container">
+    <div id="control-display">  
+        <h1>Control region</h1>
+        <div class="customDropdown">
+            <div class=="dropdownSelected" id="dropdownSelected">
+                Select option.
+            </div>
+            <div class="dropdownOptions" id="dropdownOptions">
+                <div class="dropdownOption" data-value="showScan">Scan</div>
+                <div class="dropdownOption" data-value="showSearch">Search</div>
+                <div class="dropdownOption" data-value="showCheckOut">Check Out</div>
+                <div class="dropdownOption" data-value="showSales">Sales</div>
+                <div class="dropdownOption" data-value="showStolen">Stolen</div>
+                <div class="dropdownOption" data-value="showCheckIn">Check In</div>
+            </div>
+        </div>
+    </div>
+    <div id="code-entry-display">
+        <h1>Ausil Code entry</h1> 
+        <input type="text" id="inputCode" name="inputCode" placeholder="Enter text here">
+        <button id="scanButton" class="controlButton">Scan</button>
+        <button id="detailsSearch" class="controlButton" disabled>Search</button>
+    </div>
+    <div id="details-display">
+        <h1>Details display</h1>
+        
+        <!-- <input type="text" id="inputQuantity" name="Quantity" value="1" inputmode="numberic"> -->
+        <div class="numeric-input-container">
+            <div class="numeric-input-label">Quantity:</div>    
+            <button class="numeric-decrement">-</button>
+            <input type="text" id="quantityNumbericInput" value="0" inputmode="numeric">
+            <button class="numeric-increment">+</button>
+        </div>
+
+        <!-- email - Single line text input with clear and copy buttons -->
+        <div class="text-input-container">
+            <label for="emailTextInput">eMail:</label>
+            <div class="input-wrapper">
+                <input type="text" class="text-input" id="emailTextInput" placeholder="Enter email address">
+                <div class="input-controls">
+                    <button class="control-btn clear-btn" title="Clear">×</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- name - Single line text input with clear and copy buttons -->
+        <div class="text-input-container">
+            <label for="nameTextInput">Name:</label>
+            <div class="input-wrapper">
+                <input type="text" class="text-input" id="nameTextInput" placeholder="Enter your name">
+                <div class="input-controls">
+                    <button class="control-btn clear-btn" title="Clear">×</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-line textarea with clear and expand buttons -->
+        <div class="textarea-container">
+            <label for="customTextarea">Multi-Line Text:</label>
+            <div class="textarea-wrapper">
+                <textarea id="customTextarea" 
+                        placeholder="Enter multi-line text here..." 
+                        rows="2"
+                        style="resize: vertical;"></textarea>
+                <div class="textarea-controls">
+                    <button class="control-btn clear-btn" title="Clear">×</button>
+                    <button class="control-btn expand-btn" title="Expand">⛶</button>
+                    <button class="control-btn exit-fullscreen-btn" title="Exit Fullscreen" style="display: none;">✕</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div id="scan-display">
         <p>Barcode Scanner using QuaggaJS</p>
         <a href="mailto:recipient@example.com?subject=Your Subject&body=Your Message Body">
         Send Email
@@ -21,7 +93,7 @@
         <div id="code">No codes yet.</div>
         <div id="format"> </div>
         <div id="result">Ready to scan. Press Start.</div>
-        <div id="button-container">
+        <div id="scanner-button-container">
             <button id="startButton">Start Scan</button>
             <button id="pauseButton" disabled>Pause</button>
             <button id="stopButton" disabled>Stop</button>
@@ -32,7 +104,8 @@
     <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
     -->
     <script src="quagga.js"></script>
-    <script src="sheets-client.js"></script>
+    <!-- <script src="sheets-client.js"></script>  -->
     <script src="scanner.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,0 +1,156 @@
+
+        <!-- name - Single line text input with clear and copy buttons -->
+        <div class="text-input-container">
+            <label for="nameTextInput">Name:</label>
+            <div class="input-wrapper">
+                <input type="text" class="text-input" 
+                       id="nameTextInput" 
+                       placeholder="Enter your name">
+                <div class="input-controls">
+                    <button class="control-btn clear-btn" title="Clear">×</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-line textarea with clear and expand buttons -->
+        <div class="textarea-container">
+            <label for="customTextarea">Multi-Line Text:</label>
+            <div class="textarea-wrapper">
+                <textarea id="customTextarea" 
+                        placeholder="Enter multi-line text here..." 
+                        rows="2"
+                        style="resize: vertical;"></textarea>
+                <div class="textarea-controls">
+                    <button class="control-btn clear-btn" title="Clear">×</button>
+                    <button class="control-btn expand-btn" title="Expand">⛶</button>
+                    <button class="control-btn exit-fullscreen-btn" title="Exit Fullscreen" style="display: none;">✕</button>
+                </div>
+            </div>
+        </div>
+
+
+
+/* Styles for text input with clear button */
+.text-input-container {
+    margin-bottom: 20px;
+}
+.textarea-container {
+    margin-bottom: 20px;
+}
+/* */
+.input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 300px;
+}
+.textarea-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+}
+/* */
+#customTextInput {
+    width: 100%;
+    padding: 10px 80px 10px 10px; /* Right padding for buttons */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+#customTextarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+    resize: vertical; /* Allow vertical resize */
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+/* */
+
+.input-controls {
+    position: absolute;
+    top: 5px;
+    /*
+    top: 50%;
+    transform: translateY(-50%);
+    */
+    right: 5px;
+    display: flex;
+    gap: 5px;
+}
+.textarea-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 5px;
+}
+/* */
+.control-btn {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+
+/* */
+
+.control-btn:hover {
+    background: #e0e0e0;
+}
+
+/* */
+
+.clear-btn {
+    color: #ff4444;
+}
+/* End of styles for text input with clear and copy buttons */
+
+/* styles for multi-line text input with clear and expand buttons */
+
+/* Show exit button only in fullscreen */
+.fullscreen .exit-fullscreen-btn {
+    display: block !important;
+}
+.fullscreen .expand-btn {
+    display: none;
+}
+/* Overlay background for fullscreen */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+}
+.fullscreen-overlay.active {
+    display: block;
+}
+#customTextarea.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    z-index: 1000;
+    border: none;
+    border-radius: 0;
+}
+.fullscreen .textarea-wrapper {
+    max-width: none;
+}
+*/
+
+/* End of styles for multi-line text input with clear and expand buttons */

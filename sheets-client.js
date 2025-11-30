@@ -1,18 +1,18 @@
-class GoogleSheetsJSONPClient {
+export class GoogleSheetsJSONPClient {
   constructor(scriptUrl) {
     this.scriptUrl = scriptUrl;
   }
   
   // Append data using JSONP
   appendData(rows) {
-    console.log('Preparing to append data via JSONP:', rows); // DEBUG
+    console.log('Preparing to append data via appendData:', rows); // DEBUG
     return new Promise((resolve, reject) => {
-      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+      const callbackName = 'appendData_callback_' + Math.round(100000 * Math.random());
       const script = document.createElement('script');
       
       // Create callback function
       window[callbackName] = (data) => {
-        console.log('JSONP response received:', data);
+        console.log('appendData response received:', data);
         // Clean up
         delete window[callbackName];
         document.body.removeChild(script);
@@ -24,21 +24,23 @@ class GoogleSheetsJSONPClient {
       
       // Build the URL
       const url = `${this.scriptUrl}?callback=${callbackName}&data=${encodedData}`;
-      console.log('Making JSONP request to:', url); // DEBUG
+      //const url = `${this.scriptUrl}?callback=${callbackName}`;
+      console.log('Making appendData request to:', url); // DEBUG
       script.src = url;
+      console.log('appendData request sent:'); // DEBUG
       
       // Error handling
       script.onerror = (error) => {
-        console.error('Script load error details:', error);
+        console.error('appendData Script load error details:', error);
         delete window[callbackName];
         if (document.body.contains(script)) {
           document.body.removeChild(script);
         }
-        reject(new Error('JSONP request failed to: ' +  url));
+        reject(new Error('appendData request failed to: ' +  url));
       };
 
       script.onload = () => {
-        console.log('Script loaded successfully and waiting for callback for URL:', url);
+        console.log('appendData script loaded successfully and waiting for callback for URL:', url);
       }
       
       // Add to page
@@ -47,12 +49,12 @@ class GoogleSheetsJSONPClient {
       // Timeout after 30 seconds
       setTimeout(() => {
         if (window[callbackName]) {
-          console.log('JSONP timeout - callback never called');
+          console.log('appendData timeout - callback never called');
           delete window[callbackName];
           if (document.body.contains(script)) {
             document.body.removeChild(script);
           }
-          reject(new Error('JSONP timeout'));
+          reject(new Error('appendData timeout'));
         }
       }, 30000);
     });
@@ -96,3 +98,6 @@ class GoogleSheetsJSONPClient {
     });
   }
 }
+
+
+

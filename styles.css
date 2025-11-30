@@ -7,12 +7,17 @@ body {
     color: #fff;
     text-align: center;
 }
-#container {
+#scan-display {
     display: flex;
     flex-direction: column;
     height: 100vh;
 }
-#scanner-container {
+
+.drawingBuffer {
+    display: none;
+}
+
+ #scanner-container {
     flex-grow: 1;
     position: relative;
     background: black;
@@ -28,14 +33,14 @@ body {
     height: 100%;
     object-fit: cover; /* Crucial for mobile layout */
 }
-#button-container {
+#scanner-button-container {
     padding: 20px;
     display: flex;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
 }
-button {
+.controlButton {
     background-color: #007aff; /* iOS blue */
     color: white;
     border: none;
@@ -88,3 +93,173 @@ button:disabled {
     background-color: #ff3b30; /* iOS red */
 }
 
+/* Styles for input dropdown selection */
+.customDropdown {
+    position: relative;
+    width: 200px;
+    color: black;
+    background-color: white;
+}
+
+.dropdownSelected {
+    padding: 10px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    background: white;
+}
+
+.dropdownOptions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid #ccc;
+    border-top: none;
+    background: lightgray;
+    z-index: 1000;
+}
+
+.dropdownOption {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.dropdownOption:hover {
+    background: #f0f0f0;
+}
+
+.dropdownOptions.show {
+    display: block;
+}
+/* end of - Styles for input dropdown selection */
+
+/* Styles for input numberic input */
+.numeric-input-container {
+    display: flex;
+    align-items: center;
+}
+.numeric-input-container input {
+    width: 80px;
+    text-align: center;
+    margin: 0 5px;
+}
+.numeric-input-container button {
+    cursor: pointer;
+    background-color: #007aff; /* iOS blue */
+    color: white;
+    border-radius: 10px;
+}
+/* end of - Styles for input numberic input */
+
+/* Styles for text input with clear button */
+.text-input-container {
+    margin-bottom: 20px;
+}
+.input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 300px;
+}
+#customTextInput {
+    width: 100%;
+    padding: 10px 80px 10px 10px; /* Right padding for buttons */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.input-controls {
+    position: absolute;
+    /*
+    top: 50%;
+    transform: translateY(-50%);
+    */
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 5px;
+}
+.control-btn {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.control-btn:hover {
+    background: #e0e0e0;
+}
+.clear-btn {
+    color: #ff4444;
+}
+/* End of styles for text input with clear and copy buttons */
+
+/* styles for multi-line text input with clear and expand buttons */
+.textarea-container {
+    margin-bottom: 20px;
+}
+.textarea-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+}
+#customTextarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+    resize: vertical; /* Allow vertical resize */
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+.textarea-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 5px;
+}
+/* Show exit button only in fullscreen */
+.fullscreen .exit-fullscreen-btn {
+    display: block !important;
+}
+.fullscreen .expand-btn {
+    display: none;
+}
+/* Overlay background for fullscreen */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+}
+.fullscreen-overlay.active {
+    display: block;
+}
+#customTextarea.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    z-index: 1000;
+    border: none;
+    border-radius: 0;
+}
+.fullscreen .textarea-wrapper {
+    max-width: none;
+}
+*/
+
+/* End of styles for multi-line text input with clear and expand buttons */
