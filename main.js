@@ -1,6 +1,75 @@
+
+// Class for managing input fields with clear and fullscreen functionality
+class InputManager {
+    constructor() {
+        this.init();
+    }
+    init() {
+        this.setupEventDelegation();
+        this.initializeClearButtons();
+    }
+    setupEventDelegation() {
+        document.addEventListener('click', (e) => {
+            this.handleButtonClick(e);
+        });
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('.text-input, textarea[data-clearable]')) {
+                this.handleInput(e.target);
+            }
+        });
+    }
+    handleButtonClick(e) {
+        const btn = e.target.closest('.control-btn');
+        if (!btn) return;
+
+        const inputWrapper = btn.closest('.input-wrapper, .textarea-wrapper');
+        const input = inputWrapper?.querySelector('.text-input, textarea');
+        console.log("Button clicked: ", btn, " for input: ", input);
+        if (btn.classList.contains('clear-btn')) {
+            this.clearInput(input);
+            if (btn.closest('.textarea-wrapper')) {
+                this.autoResizeTextarea(input);
+            }
+        }
+    }
+    handleInput(input) {
+        console.log(`${input.id} input:`, input.value);
+        this.toggleClearButton(input);
+        
+        if (input.id === 'customTextarea') {
+            this.autoResizeTextarea(input);
+        }
+    }
+    clearInput(input) {
+        if (!input) return;
+        input.value = '';
+        input.focus();
+        input.dispatchEvent(new Event('input'));
+    }
+    toggleClearButton(input) {
+        const clearBtn = input?.closest('.input-wrapper, .textarea-wrapper')
+                           ?.querySelector('.clear-btn');
+        if (clearBtn) {
+            clearBtn.style.visibility = input.value ? 'visible' : 'hidden';
+        }
+    }
+    initializeClearButtons() {
+        document.querySelectorAll('.text-input, textarea[data-clearable]').forEach(input => {
+            this.toggleClearButton(input);
+        });
+    }
+    autoResizeTextarea(textarea) {        
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+    }
+}
+
 // Importing classes from other modules
 import { GoogleSheetsJSONPClient } from './sheets-client.js';
 import {localStorageManager} from './local-storage.js';
+
+// Initialize the text input manager
+const inputManager = new InputManager();
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrKQSOwGsXcboLdsgJL7ex8SQ7NWJbf254UEXHr1tXAwKtvyG-AJT2vIcnTLeOI_sJ/exec';
 const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
@@ -192,13 +261,13 @@ const incrementBtn = document.querySelector('.numeric-increment');
 
 // Input validation
 customInput.addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9.-]/g, '');
+    this.value = this.value.replace(/[^0-9]/g, '');
 });
 
 // Decrement value
 decrementBtn.addEventListener('click', function() {
     let value = parseFloat(customInput.value) || 0;
-    customInput.value = value - 1;
+    customInput.value = value > 0 ? value - 1 : 0;
     customInput.dispatchEvent(new Event('change'));
 });
 
@@ -214,8 +283,206 @@ customInput.addEventListener('change', function() {
     console.log('Numeric value changed:', this.value);
 });
 
-//---End of----- numeric input event listener and assoicated functions ----------------
+//---End of----- numeric input event listener and associated functions ----------------
 
+//------ add button event listener and associated functions ---------------------
+const addItemButton = document.getElementById('add-item-button');
+addItemButton.addEventListener('click', function() {
+    console.log('Add Item Button clicked.');
+    addItem();
+    hideDiscountArea();
+});
+
+//--------- adds a ausil item to the list
+// calls on the addLineItem.
+function addItem(){
+    const code = document.getElementById("inputCode").value;
+    console.log("code to check: ", code);
+    if (checkCodePresent(code)){
+        setMessage("This Ausid has already been added!");
+        return;
+    }else{
+        clearMessage();
+    }
+    const quantity = Number(document.getElementById("quantityNumbericInput").value);
+    const price = Number("1.00");
+    if((code.length == 0) || (quantity == 0) ){
+        console.log("cannot add empty code or 0 quantity");
+        return;
+    }
+    const description = "This describes the item."
+    addLineItem(code, quantity, price, description);
+    // Now calculate th sales total
+    calculateSaleTotal();
+}
+
+//--------- does the dom build for adding an item to the list.
+// used by mutiple functions (addItem, addDiscount) that append to this list.
+function addLineItem(code, quantity, price, description){    
+    const eleProductList = document.getElementById("items-to-purchase"); 
+    const eleProductItem = document.createElement('div');     // product item
+    eleProductItem.classList.add("product-item");
+    //creat the two html lines for this item.
+    // create the first line for the item
+    const eleItemLine1 = document.createElement('div');      // item-header
+    eleItemLine1.classList.add("item-header");
+    // create each column in this line
+    const eleItemCode = document.createElement('span');
+    eleItemCode.classList.add("code");
+    eleItemCode.textContent=code;
+    eleItemLine1.appendChild(eleItemCode);
+    const eleItemQty = document.createElement('span');
+    eleItemQty.classList.add("quantity");
+    eleItemQty.textContent= quantity.toString();
+    eleItemLine1.appendChild(eleItemQty);
+    const eleItemPrice = document.createElement('span');
+    eleItemPrice.classList.add("price");
+    eleItemPrice.textContent = price.toFixed(2);
+    eleItemLine1.appendChild(eleItemPrice);
+    const eleItemSubtotal = document.createElement('span');
+    eleItemSubtotal.classList.add("subtotal");
+    eleItemSubtotal.textContent = (price * quantity).toFixed(2);
+    eleItemLine1.appendChild(eleItemSubtotal);
+    const eleDeleteBtn = document.createElement('button');
+    eleDeleteBtn.classList.add("delete-btn");
+    eleDeleteBtn.title = "Delete Item";
+    eleDeleteBtn.textContent = "x";
+    eleItemLine1.appendChild(eleDeleteBtn);
+    eleProductItem.appendChild(eleItemLine1);
+    // create the second line (description) for the item
+    const eleItemLine2 = document.createElement('div');
+    eleItemLine2.classList.add("description");
+    eleItemLine2.textContent = description;
+    eleProductItem.appendChild(eleItemLine2);
+    // Now insert into the page / dom.
+    document.getElementById("items-to-purchase").prepend(eleProductItem);
+}
+
+function setMessage(message){
+    console.log("set message: ", message);
+    const eleMessage = document.getElementById("message");
+    console.log("eleMessage: ", eleMessage);
+    document.getElementById("message").style.display = 'block';
+    eleMessage.textContent = message;
+}
+
+function clearMessage(){
+    console.log("clear message: ");
+    const eleMessage = document.getElementById("message");
+    document.getElementById("message").style.display = 'none';
+    eleMessage.textContent = "";
+}
+
+// Need code to act on this delete button being clicked.
+document.getElementById("items-to-purchase").addEventListener('click', (e) => {
+    console.log("event on items-to-purchase", e);
+    clearMessage();
+    if (e.target.matches('.delete-btn')) {
+        e.target.closest('.product-item').remove();
+        calculateSaleTotal();
+        // need to check if any items left
+        const eleItemsToPurchase = document.getElementById("items-to-purchase");
+        const eleItems = eleItemsToPurchase.querySelectorAll('.subtotal');
+        console.log("subtotals elements:", eleItems);
+        if(eleItems.length == 0){
+            document.getElementById("sale-total").style.display = 'none';
+        }
+    }
+});
+// on initialisation, hide the sale total area 
+document.getElementById("sale-total").style.display = 'none';
+
+// on initialisation, hide the message area.
+document.getElementById("message").style.display = 'none';
+
+// on initialisation, hide the discount area.
+document.getElementById("discount-display").style.display='none';
+
+// need code to act on the "discount" button which shows the discount area
+document.getElementById("show-discount").addEventListener('click', (e) => {
+    console.log("event on show-discount", e);
+    document.getElementById("discount-display").style.display='flex';
+});
+
+// need code to act on the discount "exit" button which hides the discount area
+document.getElementById("discount-cancel").addEventListener('click', (e) => {
+    console.log("event on discount-cancel", e);
+    hideDiscountArea();
+});
+
+function hideDiscountArea(){
+    document.getElementById("discount-display").style.display='none';
+    document.getElementById("discount-amount").value = "";
+}
+
+// need code to act on the "add discount" button
+document.getElementById("discount-add").addEventListener('click', (e) => {
+    console.log("event on discount-add", e);
+    // add the line item - discount
+    clearMessage();
+    if (checkCodePresent("Discount")){
+        setMessage("A discount has already been applied!");
+        return;
+    }
+    const discountValue = -1 * document.getElementById("discount-amount").value;
+    if (discountValue == 0){
+        setMessage("Your discount is set to $0 - no discount!");
+        return;
+    }
+    //const discountValue = Number("1.00") * -1;
+    console.log ("discount value: ", discountValue);
+    addLineItem("Discount", "1", discountValue, "");
+    calculateSaleTotal();
+    // need to check if any items left
+    const eleItemsToPurchase = document.getElementById("items-to-purchase");
+    const eleItems = eleItemsToPurchase.querySelectorAll('.subtotal');
+    console.log("subtotals elements:", eleItems);
+    if(eleItems.length == 0){
+        document.getElementById("sale-total").style.display = 'none';
+    }
+    hideDiscountArea()
+});
+
+
+function checkCodePresent(checkCode){
+    // check each code field to see if checkCode is already present
+    const eleItemsToPurchase = document.getElementById("items-to-purchase");
+    const eleItems = Array.from(eleItemsToPurchase.querySelectorAll('.code'));
+    console.log("check code is present in list: ", eleItems);
+    const isPresent = eleItems.some(item =>
+        item.innerText.includes(checkCode.trim())
+    );
+    console.log(isPresent ? "this code is already present" : "This code is not present");
+    return isPresent;
+}
+
+function calculateSaleTotal(){
+    // get all subtotals in the items to purchase
+    const eleItemsToPurchase = document.getElementById("items-to-purchase");
+    const eleItems = eleItemsToPurchase.querySelectorAll('.subtotal');
+    console.log("subtotals elements:", eleItems);
+    var saleTotal = 0;
+    eleItems.forEach( (thisEle)=>{
+        console.log("value:" + thisEle.innerText + ":");
+        saleTotal += Number(thisEle.innerText);
+        console.log("saleTotal: ", saleTotal.toFixed(2));
+    });
+    console.log("*saleTotal: ", saleTotal.toFixed(2));
+    document.getElementById("sale-amount").textContent = "$" + saleTotal.toFixed(2);
+    // Display or hide this total based on non-zero value
+    if (eleItems.count == 0){
+        document.getElementById("sale-total").style.display = 'none';
+    }else{
+        document.getElementById("sale-total").style.display = 'flex';
+    }
+}
+
+
+
+//---End of--- add button event listener and associated functions ---------------------
+
+
+/*
 //-------- text input event listener and assoicated functions ----------------
 const textInputs = document.querySelectorAll('.text-input');
 const clearBtns = document.querySelectorAll('.clear-btn');
@@ -349,7 +616,7 @@ textarea.addEventListener('input', function() {
 textareaClearBtn.style.visibility = textarea.value ? 'visible' : 'hidden';
 
 // ---End of----- multi-line text input with clear and expand buttons ------------
-
+*/
 
 // Handle PWA lifecycle events
 document.addEventListener('visibilitychange', function() {
@@ -383,7 +650,7 @@ export function optionsDisplay() {
 
     const areaControlDisplay = document.getElementById('control-display');
     console.log(" areaControlDisplay: ", areaControlDisplay); 
-    const areaCodeEntryDisplay = document.getElementById('code-entry-display');
+    const areaCodeEntryDisplay = document.getElementById('code-entry-container');
     console.log(" areaCodeEntryDisplay: ", areaCodeEntryDisplay);
     const areaDetailsDisplay = document.getElementById('details-display');
     console.log("areaDetailsDisplay: ", areaDetailsDisplay);
@@ -407,14 +674,14 @@ export function optionsDisplay() {
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'block';
         areaDetailsDisplay.style.display = 'block';
-        areaScanDisplay.style.display = 'block';    
+        areaScanDisplay.style.display = 'block';
     }
 }
 
-
-
-
-
-
 // Initialize UI
 updateUI();
+
+
+
+
+

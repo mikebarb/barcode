@@ -1,4 +1,22 @@
 /* Simple, iOS-friendly styles */
+
+/* Always put this at the very top of your CSS */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Optional: Reset margins/padding on specific elements */
+body, h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden; /* Extra protection */
+}
+
+
 body {
     margin: 0;
     padding: 0;
@@ -7,6 +25,7 @@ body {
     color: #fff;
     text-align: center;
 }
+/* style for the Quagga scan library */
 #scan-display {
     display: flex;
     flex-direction: column;
@@ -92,22 +111,33 @@ button:disabled {
 .status-stopped {
     background-color: #ff3b30; /* iOS red */
 }
+/* end of - style for the Quagga scan library */
 
 /* Styles for input dropdown selection */
+#control-display {
+    background-color: bisque;
+    padding: 10px;
+    font-size: 18px;
+}
+.control-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: black;
+}
 .customDropdown {
     position: relative;
-    width: 200px;
+    /*width: 200px;*/
     color: black;
     background-color: white;
+    padding: 10px;
 }
-
 .dropdownSelected {
     padding: 10px;
     border: 1px solid #ccc;
     cursor: pointer;
     background: white;
 }
-
 .dropdownOptions {
     display: none;
     position: absolute;
@@ -119,26 +149,96 @@ button:disabled {
     background: lightgray;
     z-index: 1000;
 }
-
 .dropdownOption {
     padding: 10px;
     cursor: pointer;
 }
-
 .dropdownOption:hover {
     background: #f0f0f0;
 }
-
 .dropdownOptions.show {
     display: block;
 }
 /* end of - Styles for input dropdown selection */
 
+/* Styles for ausil code input */
+#code-entry-container {
+    /*display: block;*/
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px;
+    padding: 10px;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.code-wrapper {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    /*background-color: white;*/
+    gap: 10px;
+}
+#code-entry-container label {
+    /*display: inline-block;*/
+    font-weight: bold;
+    /*text-align: left;*/
+    font-size: 14px;
+    /*line-height: 38px;
+    vertical-align: middle;*/
+    background-color: black;
+    color: white;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 0 10px;
+}
+#code-entry-container input {
+    /*display: inline-block;*/
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    flex:1;
+    min-width:0;
+}
+#code-entry-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+#code-entry-buttons .controlButton {
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+}
+
+/* end of - Styles for ausil code input */
+
+/* ----------------- Details-display area styles ----------------- */
+#details-display {
+    background-color: #222;
+    padding: 20px;
+    color: white;
+    min-height: 150px;
+}
+
 /* Styles for input numberic input */
 .numeric-input-container {
     display: flex;
     align-items: center;
+    margin-bottom: 10px;
 }
+.numberic-input-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-left: 10px;
+    background-color: white;
+    border-radius: 10px;
+}
+
 .numeric-input-container input {
     width: 80px;
     text-align: center;
@@ -150,116 +250,232 @@ button:disabled {
     color: white;
     border-radius: 10px;
 }
+#add-item-button {
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+    background-color: #007aff; /* iOS blue */
+    color: white;
+    min-width: 100px;
+    cursor: pointer;
+}
 /* end of - Styles for input numberic input */
 
-/* Styles for text input with clear button */
-.text-input-container {
-    margin-bottom: 20px;
+/* styles for discount display */
+.generic-button {
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+    background-color: #007aff; /* iOS blue */
+    color: white;
+    min-width: 50px;
+    cursor: pointer;
 }
-.input-wrapper {
-    position: relative;
-    display: inline-block;
-    width: 300px;
+#discount-display{
+    display: flex;
+    flex-grow:1;
+    flex-shrink:1;
+    flex-basis:content;
+    justify-content: space-evenly;
+    align-items: center;
+    gap:4px;
 }
-#customTextInput {
-    width: 100%;
-    padding: 10px 80px 10px 10px; /* Right padding for buttons */
+#discount-display input{
+    width: 25%;
+    padding: 10px 40px 10px 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 14px;
 }
-.input-controls {
-    position: absolute;
-    /*
-    top: 50%;
-    transform: translateY(-50%);
-    */
-    top: 5px;
-    right: 5px;
-    display: flex;
-    gap: 5px;
-}
-.control-btn {
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    padding: 4px 8px;
+#discount-display button {
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+    background-color: #007aff; /* iOS blue */
+    color: white;
+    min-width: 50px;
     cursor: pointer;
-    font-size: 12px;
 }
-.control-btn:hover {
-    background: #e0e0e0;
-}
-.clear-btn {
-    color: #ff4444;
-}
-/* End of styles for text input with clear and copy buttons */
 
-/* styles for multi-line text input with clear and expand buttons */
-.textarea-container {
-    margin-bottom: 20px;
+
+
+/* end of - styles for discount display
+
+/* styles for the sale total */
+#sale-total{
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 2px;
+    background-color: darkgrey;
+    gap: 10px;
+
 }
-.textarea-wrapper {
+#sale-amount{
+    margin-left: auto;
+}
+/* end of - styles for the sale total */
+
+/* styles for the list of items that are being prepared for purchase */
+.product-list {
+  width: 100%;
+  padding: 0;
+}
+
+.product-item {
+  border-bottom: 1px solid #ddd;
+  padding: 12px 0;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.item-header .code {
+  width: 35%; /* Flexible width for code */
+  min-width: 100px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-header .quantity {
+  width: 12%;
+  text-align: center;
+  min-width: 50px;
+}
+
+.item-header .price {
+  width: 18%;
+  text-align: right;
+  min-width: 60px;
+}
+
+.item-header .subtotal {
+  width: 20%;
+  text-align: right;
+  min-width: 70px;
+  font-weight: 700;
+  /*color: white;*/
+}
+.delete-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dc2626;
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.description {
+  width: calc(100% - 40px);
+  text-align: left;
+  font-size: 13px;
+  color: white;
+  padding: 4px 0;
+  line-height: 1.4;
+}
+
+/* end of - styles for the list of items that are being prepared for purchase */
+
+
+/* Styles for text input */
+:root {
+    --input-padding: 10px;
+    --input-border: 1px solid #ccc;
+    --border-radius: 4px;
+    --control-btn-size: 12px;
+    --control-btn-padding: 4px 8px;
+    --primary-red: #ff4444;
+    --hover-bg: #e0e0e0;
+}
+.text-input-container {
+    margin-bottom: 10px;
+    display: block;
+}
+.text-input-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    text-align: left;
+}
+.input-wrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 500px;
+    margin: 0;
+}
+.textarea-wrapper{
     position: relative;
     width: 100%;
     max-width: 500px;
+    margin: 0;
 }
-#customTextarea {
+/*common input styles */
+.text-input,
+.multiline-text-input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 40px 10px 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 14px;
     font-family: inherit;
+}
+
+.multiline-text-input {
     line-height: 1.4;
-    resize: vertical; /* Allow vertical resize */
-    min-height: 100px;
+    resize: vertical;
+    min-height: 40px;
     max-height: 300px;
     overflow-y: auto;
     transition: all 0.3s ease;
 }
-.textarea-controls {
+/* common controls */
+.input-controls {
     position: absolute;
-    top: 5px;
-    right: 5px;
     display: flex;
     gap: 5px;
+    top: 50%;
+    right: 5px;
 }
-/* Show exit button only in fullscreen */
-.fullscreen .exit-fullscreen-btn {
-    display: block !important;
-}
-.fullscreen .expand-btn {
-    display: none;
-}
-/* Overlay background for fullscreen */
-.fullscreen-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0,0,0,0.5);
-    z-index: 999;
-    display: none;
-}
-.fullscreen-overlay.active {
-    display: block;
-}
-#customTextarea.fullscreen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    max-height: none;
-    z-index: 1000;
-    border: none;
-    border-radius: 0;
-}
-.fullscreen .textarea-wrapper {
-    max-width: none;
-}
-*/
+.input-wrapper .input-controls {
+    top: 50%;
+    transform: translateY(-50%);
+}    
 
-/* End of styles for multi-line text input with clear and expand buttons */
+/* common control button styles */
+.control-btn {
+    background: #f0f0f0;
+    border: var(--input-border);
+    border-radius: 3px;
+    padding: var(--control-btn-padding);
+    cursor: pointer;
+    font-size: var(--control-btn-size);
+}
+.control-btn:hover {
+    background: var(--hover-bg);
+}
+.clear-btn {
+    color: var(--primary-red);
+}
+
+/* button visibility states */
+.control-btn[data-visible="false"] {
+    display: none !important;
+}
+
+/* End of styles for text input */

@@ -12,7 +12,7 @@
 <body>
     <div id="debug.detection"></div>
     <div id="control-display">  
-        <h1>Control region</h1>
+        <div class="control-title">Control region</div>
         <div class="customDropdown">
             <div class=="dropdownSelected" id="dropdownSelected">
                 Select option.
@@ -27,28 +27,48 @@
             </div>
         </div>
     </div>
-    <div id="code-entry-display">
-        <h1>Ausil Code entry</h1> 
-        <input type="text" id="inputCode" name="inputCode" placeholder="Enter text here">
-        <button id="scanButton" class="controlButton">Scan</button>
-        <button id="detailsSearch" class="controlButton" disabled>Search</button>
+    <div id="code-entry-container">
+        <div class="code-wrapper">
+            <label for="inputCode">Ausil Code entry</label>
+            <input type="text" id="inputCode" name="inputCode" placeholder="Enter text or scan barcode" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        </div>
+        <div id="code-entry-buttons"> 
+            <button id="scanButton" class="controlButton">Scan</button>
+            <button id="detailsSearch" class="controlButton" disabled>Search</button>
+        </div>
     </div>
     <div id="details-display">
         <h1>Details display</h1>
-        
-        <!-- <input type="text" id="inputQuantity" name="Quantity" value="1" inputmode="numberic"> -->
+        <div id="message">This is the message line.</div>
         <div class="numeric-input-container">
-            <div class="numeric-input-label">Quantity:</div>    
-            <button class="numeric-decrement">-</button>
-            <input type="text" id="quantityNumbericInput" value="0" inputmode="numeric">
-            <button class="numeric-increment">+</button>
+            <div class="numeric-input-label">Quantity:</div> 
+            <div class="numberic-input-wrapper">
+                <button class="numeric-decrement">-</button>
+                <input type="text" id="quantityNumbericInput" value="0" inputmode="numeric">
+                <button class="numeric-increment">+</button>
+            </div>
+            <button id="add-item-button">Add</button>
+        </div>
+        <div id="sale-total">
+            <button id="show-discount" class="generic-button">Discount</button>
+            <div>Total</div>
+            <div id="sale-amount"></div>
+            <button id="finalise-purchase" class="generic-button">Purchase</button>
+        </div>
+        <div id="discount-display">
+            <label for = "discount-amount">Discount $</label> 
+            <input type="text" id="discount-amount" value="" inputmode="numeric">
+            <button id = "discount-add">Add</button>
+            <button id = "discount-cancel">exit</button>
+        </div>
+            <div id="items-to-purchase" class="products-list">
         </div>
 
         <!-- email - Single line text input with clear and copy buttons -->
-        <div class="text-input-container">
+        <div class="text-input-container" data-type="single">
             <label for="emailTextInput">eMail:</label>
             <div class="input-wrapper">
-                <input type="text" class="text-input" id="emailTextInput" placeholder="Enter email address">
+                <input type="text" class="text-input" id="emailTextInput" placeholder="Enter email address" data-clearable>
                 <div class="input-controls">
                     <button class="control-btn clear-btn" title="Clear">×</button>
                 </div>
@@ -59,7 +79,7 @@
         <div class="text-input-container">
             <label for="nameTextInput">Name:</label>
             <div class="input-wrapper">
-                <input type="text" class="text-input" id="nameTextInput" placeholder="Enter your name">
+                <input type="text" class="text-input" id="nameTextInput" placeholder="Enter your name" data-clearable="">
                 <div class="input-controls">
                     <button class="control-btn clear-btn" title="Clear">×</button>
                 </div>
@@ -67,17 +87,14 @@
         </div>
 
         <!-- Multi-line textarea with clear and expand buttons -->
-        <div class="textarea-container">
-            <label for="customTextarea">Multi-Line Text:</label>
+        <div class="text-input-container">
+            <label for="commentTextarea">Comment:</label>
             <div class="textarea-wrapper">
-                <textarea id="customTextarea" 
-                        placeholder="Enter multi-line text here..." 
-                        rows="2"
+                <textarea id="commentTextarea" class="multiline-text-input" rows="2" data-clearable data-expandable
+                        placeholder="Enter comments here" 
                         style="resize: vertical;"></textarea>
-                <div class="textarea-controls">
+                <div class="input-controls">
                     <button class="control-btn clear-btn" title="Clear">×</button>
-                    <button class="control-btn expand-btn" title="Expand">⛶</button>
-                    <button class="control-btn exit-fullscreen-btn" title="Exit Fullscreen" style="display: none;">✕</button>
                 </div>
             </div>
         </div>
