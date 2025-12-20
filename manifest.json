@@ -19,7 +19,5 @@
             "type": "image/png"
         }
     ],
-    "categories": ["utilities", "productivity"],
-    "lang": "en",
-    "dir": "ltr"
+    "categories": ["utilities", "productivity"]
 }

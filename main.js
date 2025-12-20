@@ -1,5 +1,5 @@
-
 // Class for managing input fields with clear and fullscreen functionality
+// ???  Seems to be in the details-area - email, name and comments???
 class InputManager {
     constructor() {
         this.init();
@@ -67,128 +67,114 @@ class InputManager {
 // Importing classes from other modules
 import { GoogleSheetsJSONPClient } from './sheets-client.js';
 import {localStorageManager} from './local-storage.js';
+import {ItemSearch} from './search.js';
+
+
+// Construct Service Worker URL with version parameter
+const APP_VERSION = "1.3";
+const APP_URL = './sw.js?v=' + APP_VERSION;
+
+// Service Worker Registration
+function registerServiceWorker() {
+    console.log('Registering Service Worker with URL:', APP_URL);
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          console.log('Active SW registrations:', registrations.length);
+          registrations.forEach(reg => {
+            console.log('SW scope:', reg.scope);
+            console.log('SW state:', reg.active?.state);
+          });
+        });
+        window.addEventListener('load', () => {
+            console.log("in window add load listener");
+            navigator.serviceWorker.register(APP_URL)
+                .then(registration => {
+                    console.log("registered", registration);
+                    // Send version to SW after registration
+                    if (registration.active) {
+                        registration.active.postMessage({
+                            type: 'SET_VERSION',
+                            version: APP_VERSION
+                        });
+                    }
+                    // Also send to waiting SW if any
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({
+                            type: 'SET_VERSION', 
+                            version: APP_VERSION
+                        });
+                    }
+                    // Optional: Check for updates
+                    console.log('SW registered:', registration);
+                    registration.update();
+                })
+                .catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                });
+        });
+    } else {
+        console.log('Service Workers are not supported in this browser.');
+    }
+}
+
+// Initialize the service worker
+ registerServiceWorker();
 
 // Initialize the text input manager
 const inputManager = new InputManager();
+//https://docs.google.com/spreadsheets/d/1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME/edit?usp=sharing
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrKQSOwGsXcboLdsgJL7ex8SQ7NWJbf254UEXHr1tXAwKtvyG-AJT2vIcnTLeOI_sJ/exec';
+// Test deployment
+//  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev'
+// https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev?data={"rows":[["test","data"]]}
+
+//Production deployment
+//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyweaJXgpoJGxN5trIS_KQvdq7p2YZx2lya-c3Lx5X8iwNDCzhtTorCyYx_dDVFAZCW/exec'
+//https://script.google.com/macros/s/AKfycbyweaJXgpoJGxN5trIS_KQvdq7p2YZx2lya-c3Lx5X8iwNDCzhtTorCyYx_dDVFAZCW/exec
+//https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec'
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
 const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
 const storeScans = new localStorageManager('scans');
+const storeSales = new localStorageManager('sales');
 const storedLastUpdateTime = new localStorageManager('lastUpdateTime');
+const storeStock = new localStorageManager('stock');
 
 // Export the function for module use
 // and also attach to window for legacy scripts
 window.processScanResults = processScanResults;
 export function processScanResults(codeFormat, code) {
-    // put into the inputCode field in the main data-entry area
+    // put into the inputCode field in the main data-entry area - Ausid field
     const inputField = document.getElementById('inputCode');
     inputField.value = code;
+    // As a barcode is found, hide the scanning area and show details-display area.
+    document.getElementById("scan-display").style.display = 'none';
+    document.getElementById("details-display").style.display = 'block';
+    // Check if the found code is in the stock data
+    const foundItem = searchManager.searchByCode(code);
+    console.log("foundItem from scan: ", foundItem);    
+    if (foundItem){
+        // keep this scan view open
+        //document.getElementById("details-display").style.display = 'none';
+        //document.getElementById("scan-display").style.display = 'block';
+        //document.getElementById("scan-display").style.display = 'none';
+        //document.getElementById("details-display").style.display = 'block';
+        document.getElementById("details-wrapper").style.display = 'block';
+        document.getElementById("details-cost").textContent = foundItem.price.toFixed(2);
+        document.getElementById("details-description").textContent = foundItem.description;
+    }
     // check what is selected in the dropdown 
     //getSelectedValue()
-
-    const selectedOption = getSelectedOption();
+    ///////const selectedOption = getSelectedOption();
     //const selectedOption = msSelect.value;  
-    console.log("Selected option: ", selectedOption);  
+    //console.log("Selected option: ", selectedOption);  
     
-    //miscProcessScanResults(codeFormat, code)
     return;
 }
-//****************************** stop here *****************************/
 
-function miscProcessScanResults(codeFormat, code) {
-    // store details locally
-    const gmtDate = new Date();
-    console.log("GMT Date: ", gmtDate.toISOString());
-    console.log("Local Date: ", formatLocalDateTime(gmtDate),
-                " as number: ", formatGmtDateTimeNumber(gmtDate));
-    //const transactionRow = [codeFormat, code, formatGmtDateTimeNumber(gmtDate), formatLocalDateTime(gmtDate)];
-    const transactionRow = [codeFormat, code, formatGmtDateTimeNumber(gmtDate), formatLocalDateTime(gmtDate)];
-    console.log("Storing scanned data: ", transactionRow);
-
-    // clear the local storage for testing
-    //storeScans.clearTransactions();
-
-    storeScans.addTransaction(transactionRow);
-    console.log("Transaction stored.", storeScans.getTransactions());
-
-    const lastUpdated = storedLastUpdateTime.getTransactions();
-    const transactionsStored = storeScans.getTransactions();
-    console.log("Last stored time: ", lastUpdated);
-    console.log("Transactions already stored: ", transactionsStored);
-    console.log("Qty Transactions stored: ", transactionsStored.length);
-
-    // store in google sheets on the web.
-    const sheetData = appendGoogleSheet([transactionRow]);
-    console.log("Rows read from Google Sheets: ",  sheetData.length);    
-    //appendGoogleSheet(storeScans.getTransactions());
-    //sheetsClient.appendGoogleSheet(getTransactions());
-}
-
-function formatLocalDateTime(date) {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const seconds = String(d.getSeconds()).padStart(2, '0');
-  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-}
-
-function formatGmtDateTimeNumber(date) {
-  const d = new Date(date);
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
-  const milliseconds = String(d.getUTCMilliseconds()).padStart(3, '0');
-  return `${year}${month}${day}${hours}${minutes}${seconds}.${milliseconds}`;
-}
-
-// ------------Google Sheets writing and reading functions -----------------
-// Write data using JSONP
-async function appendGoogleSheet(transactions) {
-    try {
-        console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
-        result = await client.appendData(transactions);
-        console.log('appendGoogleSheet Success:', result);
-        storedLastUpdateTime.clearTransactions();
-        console.log("**last update time to store: ", formatGmtDateTimeNumber(gmtDate));
-        storedLastUpdateTime.addTransaction([formatGmtDateTimeNumber(gmtDate)]);
-        lastUpdated = storedLastUpdateTime.getTransactions();
-        console.log("===Last stored time: ", lastUpdated);
-        
-        // Read the updated data after appending is completed.
-        const readSheetData = readGoogleSheet();
-        console.log("Read sheet data using readGoogleSheet: ", readSheetData);
-        return readSheetData;
-    }
-    catch (error) {
-        console.error('appendGoogleSheet Request Failed:', error);
-        throw error;
-    };
-}
-//Read data using JSONP
-async function readGoogleSheet() {
-    console.log("Initiating readGoogleSheet read request...");
-    try {
-        console.log('Starting readGoogleSheet read request...');
-        const result = await client.readData();
-        console.log ('readGoogleSheet Result: ', result);
-        if (result.success) {
-            console.log('readGoogleSheet Data retrieved successfully:', result.data);
-            return result.data;
-        } else {
-            console.error('readGoogleSheet Failed to retrieve data:', result.message);
-            return [];
-        }
-    } catch (error){
-        console.error('readGoogleSheet Read Request Failed:', error);
-        return [];
-    }
+function clearDetailsWrapper(){
+    document.getElementById("details-wrapper").style.display = 'none';
+    document.getElementById("details-cost").textContent = '';
+    document.getElementById("details-description").textContent = '';
 }
 
 // Toggle pause/resume
@@ -203,17 +189,28 @@ pauseButton.addEventListener('click', function() {
 // Button event listeners
 startButton.addEventListener('click', startScanning);
 stopButton.addEventListener('click', stopScanning);
-scanButton.addEventListener('click', triggerScan);
+scanButton.addEventListener('click', doScan);
+
+function doScan(){
+    clearMessage();
+    clearDetailsWrapper();
+    document.getElementById("details-display").style.display = 'none';
+    document.getElementById("search-input").value = '';
+    document.getElementById("search-container").style.display = 'none';
+    triggerScan();
+}
 
 //--------drop down menu event listener and assoicated functions ----------------
+// This is for the type of display - sales, returns, stock check etc.
 
 // Toggle dropdown
-dropdownSelected.addEventListener('click', function() {
-    event.stopPropagation(); // Prevent event from bubbling up
-    const dropdownOptions = document.getElementById('dropdownOptions');
-    dropdownOptions.classList.toggle('show');
-    //dropdownOptions.classList.add('show');
-    console.log("dropdownOptions clicked: ", dropdownOptions);
+const dropdownSelecteds = document.getElementsByClassName('dropdownSelected');
+Array.from(dropdownSelecteds).forEach( dropdownSelected => {
+    dropdownSelected.addEventListener('click', function() {
+        event.stopPropagation(); // Prevent event from bubbling up
+        dropdownSelected.nextElementSibling.classList.toggle('show');
+    });
+    console.log("next dropdownSelected.");
 });
 
 // Select option
@@ -222,11 +219,13 @@ console.log("options: ", options);
 options.forEach(option => {
     option.addEventListener('click', function() {
         event.stopPropagation(); // Prevent event from bubbling up
-        const dropdownSelected = document.getElementById('dropdownSelected');
+        //const dropdownSelected = document.getElementById('dropdownSelected');
+        const dropdownSelected = this.closest('.customDropdown').querySelector('.dropdownSelected');  
         console.log("dropdownSelected: ", dropdownSelected);
         dropdownSelected.textContent = this.textContent;
         dropdownSelected.setAttribute('data-value', this.getAttribute('data-value'));
-        const dropdownOptions = document.getElementById('dropdownOptions');
+        //const dropdownOptions = document.getElementById('dropdownOptions');
+        const dropdownOptions = dropdownSelected.nextElementSibling;
         dropdownOptions.classList.remove('show');
         console.log('Selected:', this.getAttribute('data-value'));
         optionsDisplay();
@@ -235,12 +234,19 @@ options.forEach(option => {
 
 // Close dropdown when clicking outside
 document.addEventListener('click', function(event) {
-    if (!event.target.closest('.customMsDropdown')) {
-        const dropdownOptions = document.getElementById('dropdownOptions');
-        console.log("dropdownOptions - clicked outside: ", dropdownOptions);  
-        dropdownOptions.classList.remove('show');
+    if (!event.target.closest('.customDropdown')) {
+        const dropdownOptionss = document.getElementsByClassName('dropdownOptions');
+        Array.from(dropdownOptionss).forEach( dropdownOptions => {
+            dropdownOptions.classList.remove('show');
+        });
     }
 });
+
+// Initialize dropdown with default value - Activity Type
+document.getElementById("dropdownOptions").firstElementChild.click();
+
+// Initialize dropdown with default value - Sale Type
+document.getElementById("dropdownSaleTypeOptions").firstElementChild.click();
 
 // Get the selected value when called from from anywhere
 window.getSelectedOption = getSelectedOption;
@@ -252,9 +258,21 @@ export function getSelectedOption() {
     return selectedElement.getAttribute('data-value') || '';
 }
 
+// Get the sale type when called from from anywhere
+window.getSaleTypeOption = getSaleTypeOption;
+export function getSaleTypeOption() {
+    const selectedElement = document.getElementById('dropdownSaleType');
+    console.log("SelectedElement: ", selectedElement);
+    const selectedOption = selectedElement.getAttribute('data-value');
+    console.log("getSelectedValue: ", selectedOption);
+    return selectedElement.getAttribute('data-value') || '';
+}
+
+
 //---End of-----drop down menu event listener and assoicated functions ----------------
 
 //-------- numeric input event listener and assoicated functions ----------------
+// Quantity of items to be purchased.
 const customInput = document.getElementById('quantityNumbericInput');
 const decrementBtn = document.querySelector('.numeric-decrement');
 const incrementBtn = document.querySelector('.numeric-increment');
@@ -286,14 +304,16 @@ customInput.addEventListener('change', function() {
 //---End of----- numeric input event listener and associated functions ----------------
 
 //------ add button event listener and associated functions ---------------------
+// This adds the displayed item to the purchased items list - dynamic display area.
 const addItemButton = document.getElementById('add-item-button');
 addItemButton.addEventListener('click', function() {
     console.log('Add Item Button clicked.');
     addItem();
     hideDiscountArea();
+    document.getElementById("quantityNumbericInput").value = 1;
 });
 
-//--------- adds a ausil item to the list
+//--------- adds an ausil item to the list
 // calls on the addLineItem.
 function addItem(){
     const code = document.getElementById("inputCode").value;
@@ -305,15 +325,21 @@ function addItem(){
         clearMessage();
     }
     const quantity = Number(document.getElementById("quantityNumbericInput").value);
-    const price = Number("1.00");
+    const price = Number(document.getElementById("details-cost").textContent);
+    //const price = Number("1.00");
+    
     if((code.length == 0) || (quantity == 0) ){
         console.log("cannot add empty code or 0 quantity");
         return;
     }
-    const description = "This describes the item."
+    //const description = "This describes the item."
+    const description = document.getElementById("details-description").textContent;
     addLineItem(code, quantity, price, description);
     // Now calculate th sales total
     calculateSaleTotal();
+    // clear the details area for next item & ausid entry
+    clearDetailsWrapper();
+    document.getElementById("inputCode").value = '';
 }
 
 //--------- does the dom build for adding an item to the list.
@@ -327,23 +353,23 @@ function addLineItem(code, quantity, price, description){
     const eleItemLine1 = document.createElement('div');      // item-header
     eleItemLine1.classList.add("item-header");
     // create each column in this line
-    const eleItemCode = document.createElement('span');
+    const eleItemCode = document.createElement('span');      // code
     eleItemCode.classList.add("code");
     eleItemCode.textContent=code;
     eleItemLine1.appendChild(eleItemCode);
-    const eleItemQty = document.createElement('span');
+    const eleItemQty = document.createElement('span');       // quantity
     eleItemQty.classList.add("quantity");
     eleItemQty.textContent= quantity.toString();
     eleItemLine1.appendChild(eleItemQty);
-    const eleItemPrice = document.createElement('span');
+    const eleItemPrice = document.createElement('span');    // price
     eleItemPrice.classList.add("price");
     eleItemPrice.textContent = price.toFixed(2);
     eleItemLine1.appendChild(eleItemPrice);
-    const eleItemSubtotal = document.createElement('span');
+    const eleItemSubtotal = document.createElement('span');  // subtotal
     eleItemSubtotal.classList.add("subtotal");
     eleItemSubtotal.textContent = (price * quantity).toFixed(2);
     eleItemLine1.appendChild(eleItemSubtotal);
-    const eleDeleteBtn = document.createElement('button');
+    const eleDeleteBtn = document.createElement('button');    // delete button
     eleDeleteBtn.classList.add("delete-btn");
     eleDeleteBtn.title = "Delete Item";
     eleDeleteBtn.textContent = "x";
@@ -358,7 +384,9 @@ function addLineItem(code, quantity, price, description){
     document.getElementById("items-to-purchase").prepend(eleProductItem);
 }
 
-function setMessage(message){
+// Message display area is provide user feedback for the sales operations.
+window.setMessage = setMessage;
+export function setMessage(message){
     console.log("set message: ", message);
     const eleMessage = document.getElementById("message");
     console.log("eleMessage: ", eleMessage);
@@ -373,7 +401,7 @@ function clearMessage(){
     eleMessage.textContent = "";
 }
 
-// Need code to act on this delete button being clicked.
+// Need code to act on this item's delete button being clicked.
 document.getElementById("items-to-purchase").addEventListener('click', (e) => {
     console.log("event on items-to-purchase", e);
     clearMessage();
@@ -443,7 +471,7 @@ document.getElementById("discount-add").addEventListener('click', (e) => {
     hideDiscountArea()
 });
 
-
+// Check if the Ausil barcode is already in the items list
 function checkCodePresent(checkCode){
     // check each code field to see if checkCode is already present
     const eleItemsToPurchase = document.getElementById("items-to-purchase");
@@ -470,153 +498,571 @@ function calculateSaleTotal(){
     console.log("*saleTotal: ", saleTotal.toFixed(2));
     document.getElementById("sale-amount").textContent = "$" + saleTotal.toFixed(2);
     // Display or hide this total based on non-zero value
-    if (eleItems.count == 0){
+    if (eleItems.length == 0){
         document.getElementById("sale-total").style.display = 'none';
     }else{
         document.getElementById("sale-total").style.display = 'flex';
     }
 }
 
+// code to act on the Purchase button
+document.getElementById("finalise-purchase").addEventListener('click', (e) => {
+    console.log("event on finalise-purchase", e);
+    // build the array 
+    //[time-gmt, email, name, comment, items:[code,qty,price]]
+    // Note: price is needed as discount has variable pricing!
+    const arraySale = [];
+    const arrayItems = [];
+    const gmtDate = new Date();
+    const thisDateTime = formatGmtDateTimeNumber(gmtDate);
+    arraySale.push(thisDateTime);
+    arraySale.push(getSaleTypeOption());
+    arraySale.push(document.getElementById("emailTextInput").value);
+    arraySale.push(document.getElementById("nameTextInput").value);
+    arraySale.push(document.getElementById("commentTextarea").value);
+    // get all the info from the items to purchase
+    const eleItemsToPurchase = document.getElementById("items-to-purchase");
+    const eleItems = eleItemsToPurchase.querySelectorAll('.item-header');
+    eleItems.forEach( (thisEle)=>{
+        arrayItems.push([thisEle.children[0].innerText,
+                         thisEle.children[1].innerText,
+                         thisEle.children[2].innerText]);
+    });
+    arraySale.push(arrayItems);
+    console.log("arraySale: ", arraySale);
+    // store this locally
+    //** const storeSales = new localStorageManager('sales'); **
+    storeSales.addTransaction(arraySale);
+    
+ 
+    // --*** diagnostic purposes only ***--
+    // clear the local storage for testing
+    //storeScans.clearTransactions();
 
+    // Clear the Purchase area.
+    document.getElementById("emailTextInput").value = "";
+    document.getElementById("nameTextInput").value = "";
+    document.getElementById("commentTextarea").value = "";
+    document.getElementById("inputCode").value = "";
+    eleItemsToPurchase.innerHTML = '';
+    calculateSaleTotal();
+    document.getElementById("quantityNumbericInput").value = 1;
+    setMessage("Purchase Completed.");
+})
+
+function formatLocalDateTime(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
+function formatGmtDateTimeNumber(date) {
+  const d = new Date(date);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getUTCMilliseconds()).padStart(3, '0');
+  return `${year}${month}${day}${hours}${minutes}${seconds}.${milliseconds}`;
+}
 
 //---End of--- add button event listener and associated functions ---------------------
 
-
-/*
-//-------- text input event listener and assoicated functions ----------------
-const textInputs = document.querySelectorAll('.text-input');
-const clearBtns = document.querySelectorAll('.clear-btn');
-console.log("clearBtn: ", clearBtns);
-
-// Clear input
-clearBtns.forEach(clearBtn => {
-    const a = clearBtn.closest('.input-wrapper');
-    if(a) {
-        clearBtn.addEventListener('click', function(e) {
-            console.log("Clear button clicked - event: ", e );
-            const textInput = e.target.closest('.input-wrapper').querySelector('.text-input');
-            textInput.value = '';
-            textInput.focus();
-            textInput.dispatchEvent(new Event('input'));
-        });
+//----add button event listener for sales upload to google sheets and associated functions ---------------------
+document.getElementById("upload-sales").addEventListener('click', (e) => {
+    //console.log("event on upload sales", e);
+    let nowGmtDateTime = [];
+    if (storedLastUpdateTime.getTransactions().length != 0) {
+        nowGmtDateTime = storedLastUpdateTime.getTransactions()[0][0];
+    } else {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        nowGmtDateTime = formatGmtDateTimeNumber(oneYearAgo);
     }
-});
-
-// Input events
-textInputs.forEach(textInput => {
-    textInput.addEventListener('input', function(e) {
-        console.log('Text input:', e.target.value);
-        const clearBtn = e.target.closest('.input-wrapper').querySelector('.clear-btn');
-        console.log("Associated clear button: ", clearBtn);
-        clearBtn.style.visibility = e.target.value ? 'visible' : 'hidden';
+    //console.log("nowGmtDateTime", nowGmtDateTime);
+    const salesStored = storeSales.getTransactions();
+    if (salesStored.length == 0){
+        setMessage("No sales to upload.");
+        return;
+    }
+    //console.log("sales stored: ", salesStored);
+    //console.log("Qty sales stored: ", salesStored.length);
+    const transactions = [];
+    const transaction = [];
+    salesStored.forEach(sale=>{
+        //if(sale[0] > nowGmtDateTime){
+            transaction.length = 0;
+            transaction[0] = sale[0];
+            transaction[1] = sale[1];
+            transaction[2] = sale[2];
+            transaction[3] = sale[3];
+            transaction[4] = sale[4];
+            sale[5].forEach(item=>{
+                transaction[5] = item[0];
+                transaction[6] = item[1];
+                transaction[7] = item[2];
+                transactions.push([...transaction]);
+            });
+        //}
     });
+    // store in google sheets on the web.
+    appendGoogleSheet("transactions", transactions);
 });
 
-// Show/hide clear button based on content
-//textInput.addEventListener('input', function() {
-//    clearBtn.style.visibility = this.value ? 'visible' : 'hidden';
-//});
+//----add button event listener to download stock info from google sheets and associated functions ---------------------
+document.getElementById("download-stock").addEventListener('click', (e) => {
+    console.log("event to download stock", e);
+    const stockStored = storeStock.getTransactions();
+    console.log("stock stored: ", stockStored);
+    let stockInfo = readGoogleSheet("Stock");
+});
 
-// Initialize
-console.log("clearBtns", clearBtns);
-clearBtns.forEach(clearBtn => {
-    console.log("Initializing clear button visibility", clearBtn);
-    const a = clearBtn.closest('.input-wrapper');
-    if(a) {
-        console.log("Associated input-wrapper: ", a);
-        //const textInput = a.querySelector('.text-input');
-        clearBtn.style.visibility = a.querySelector('.text-input').value ? 'visible' : 'hidden';
+// Initialize the search manager for searching against stock data
+const searchManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+
+
+// This retrieves and displays all sold items from local storage
+function displaySoldItems() {
+    // Keep track of totals
+    const totals = {
+        grandTotal: 0
+    };
+    const soldContainer = document.getElementById('sold-container');
+    soldContainer.innerHTML = ''; // Clear previous content
+
+    // Get all the sales from local storage
+    const soldItems = storeSales.getTransactions() || [];
+    console.log("soldItems: ", soldItems);
+
+    if (soldItems.length === 0) {
+        soldContainer.innerHTML = '<p>No sold items to display.</p>';
+        return;
     }
-});
-//---End of----- text input event listener and assoicated functions ----------------
 
-//----- multi-line text input with clear and expand buttons ------------
-const textarea = document.getElementById('customTextarea');
-const textareaWrapper = textarea.closest('.textarea-wrapper');
-const textareaClearBtn = textareaWrapper.querySelector('.clear-btn');
-const textareaCopyBtn = textareaWrapper.querySelector('.copy-btn');
-const expandBtn = textareaWrapper.querySelector('.expand-btn');
-const exitFullscreenBtn = textareaWrapper.querySelector('.exit-fullscreen-btn');
+    // Display all the sales.
+    // eleContainer
+    // -> elePurchase (for each purchase)
+    //    -> eleCommon (the infor common to the purchase)
+    //       -> eleItems (the items container)
+    //          -> eleItem (for each sold item)
+    soldItems.reverse().forEach(purchase => {
+        console.log("purchase: ", purchase);
+        const elePurchase = document.createElement('div');
+        elePurchase.classList.add('sold-purchase');
 
-// Create overlay for fullscreen mode
-const overlay = document.createElement('div');
-overlay.className = 'fullscreen-overlay';
-document.body.appendChild(overlay);
+        const eleCommon = createDomPurchaseCommon(purchase);
+        elePurchase.appendChild(eleCommon);
+        const eleItemsContent = createDomItem(purchase[5]);
+        elePurchase.appendChild(eleItemsContent);
+        soldContainer.appendChild(elePurchase);
 
-// Enter fullscreen
-function enterFullscreen() {
-    console.log("Entering fullscreen mode");
-    textarea.classList.add('fullscreen');
-    textareaWrapper.classList.add('fullscreen');
-    overlay.classList.add('active');
-    
-    // Focus textarea and move cursor to end
-    textarea.focus();
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        const thisTotal = addItemsDollarTotals(purchase[5]);
+        const saleType = purchase[1];
+        //console.log("saleType: ", saleType, " thisTotal: ", thisTotal.toFixed(2));
+        if (totals[saleType]){
+            totals[saleType] += thisTotal;
+        }else{
+            totals[saleType] = thisTotal;
+        }
+        totals.grandTotal += thisTotal;
+    });
+    // Now display the totals`
+    const eleTotals = createDomDisplayTotals(totals);
+    eleTotals.classList.add('sold-totals');
+    soldContainer.prepend(eleTotals);
 }
 
-// Exit fullscreen
-function exitFullscreen() {
-    console.log("Exiting fullscreen mode");
-    textarea.classList.remove('fullscreen');
-    textareaWrapper.classList.remove('fullscreen');
-    overlay.classList.remove('active');
-    
-    // Reset textarea size
-    textarea.style.height = 'auto';
+function createDomDisplayTotals(totals) {
+    // Display totals
+    const eleTotals = document.createElement('div');
+    eleTotals.classList.add('sold-totals');
+    for (const [key, value] of Object.entries(totals)) {
+        const eleTotal = document.createElement('div');
+        eleTotal.classList.add('sold-total');
+        eleTotal.innerText = `${key}: ${value.toFixed(2)}`;
+        eleTotals.appendChild(eleTotal);
+    }
+    return eleTotals;
 }
 
-// Expand/collapse fullscreen
-expandBtn.addEventListener('click', function(){
-    if (document.getElementById('customTextarea').classList.contains('fullscreen')) {
-        exitFullscreen();
-    }else{
-        enterFullscreen();
+function formatDateTimeGMT(dateTimeStr) {
+    // Extract components from the GMT string
+    const year = parseInt(dateTimeStr.substring(0, 4));
+    const month = parseInt(dateTimeStr.substring(4, 6)) - 1; // Month is 0-indexed
+    const day = parseInt(dateTimeStr.substring(6, 8));
+    const hours = parseInt(dateTimeStr.substring(8, 10));
+    const minutes = parseInt(dateTimeStr.substring(10, 12));
+
+    // Create Date object as UTC
+    const utcDate = new Date(Date.UTC(year, month, day, hours, minutes));
+    
+    // Convert to local time
+    const localDate = new Date(utcDate);
+
+    // Format to "Tues DD/MM/YYYY HH:MM" in local time
+    const days = ['Sun', 'Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat'];
+    const dayName = days[localDate.getDay()];
+    
+    const localDay = String(localDate.getDate()).padStart(2, '0');
+    const localMonth = String(localDate.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const localYear = localDate.getFullYear();
+    const localHours = String(localDate.getHours()).padStart(2, '0');
+    const localMinutes = String(localDate.getMinutes()).padStart(2, '0');
+    
+    return `${dayName} ${localDay}/${localMonth}/${localYear} ${localHours}:${localMinutes}`;
+}
+
+// Usage:
+//const gmtDateTime = "20231220124530"; // GMT: December 20, 2023, 12:45:30
+//const localFormatted = formatDateTimeGMT(gmtDateTime);
+//console.log(localFormatted); // Will show local time equivalent
+
+
+function createDomPurchaseCommon(purchase) {
+    const eleCommon = document.createElement('div');
+    eleCommon.classList.add('sold-common');
+    // Add common details - cash, email, name, comment
+    for(let i = 0; i < 5; i++){
+        const eleCommonDetail = document.createElement('div');
+        //eleCommonDetail.classList.add('soldCommonDetail');
+        if (i == 0){
+            const storedDate = purchase[i];
+            console.log("storedDate: ", storedDate);
+            const extractedDatePart = storedDate.slice(0, 12); // "YYYYMMDDHHMM"
+            const desiredDateTime = formatDateTimeGMT(extractedDatePart);
+            console.log("desiredDateTime: ", desiredDateTime);
+            eleCommonDetail.innerText = desiredDateTime;
+        }else{
+            eleCommonDetail.innerText = purchase[i];
+        }
+        eleCommon.appendChild(eleCommonDetail);
     }
-});
+    return eleCommon;
+}
 
-// Exit fullscreen
-exitFullscreenBtn.addEventListener('click', exitFullscreen);
+// Create DOM elements to diplay items over two lines.
+//items: 
+// //[[code, quantity, price], [code, quantity, price], ...]
+function createDomItem(items) {
+    console.log("Items: ", items);
+    // add in a single line the item details - code, qty, price
+    const eleItems = document.createElement('div');
+    //eleItem.classList.add('item-header');
+    items.forEach(item => {
+        const eleItem = document.createElement('div');
+        eleItem.classList.add('product-item');
+        const eleItemLine1 = document.createElement('div');
+        eleItemLine1.classList.add('item-header');
+        for (let i = 0; i < item.length; i++){
+            const eleItemDetail = document.createElement('span');
+            //eleItemDetail.classList.add('soldItemDetail');
+            eleItemDetail.innerText = item[i];
+            eleItemLine1.appendChild(eleItemDetail);
+        };
+        // Need to add total for this item (qty * price)
+        const itemQuantity = Number(item[1]);
+        const itemPrice = Number(item[2]);
+        const itemTotal = itemQuantity * itemPrice;
+        const eleItemDetail2 = document.createElement('span');
+        //eleItemDetail2.classList.add('soldItemDetail');
+        eleItemDetail2.innerText = itemTotal.toFixed(2);
+        eleItemLine1.appendChild(eleItemDetail2);
+        eleItem.appendChild(eleItemLine1);
+        // Now want the description - do search using code. 
+        const itemCode = item[0];
+        let description = "";
+        if(itemCode === "Discount"){
+            description = "Discount Applied";
+        }else{
+            const searchResult = searchManager.searchByCode(itemCode);
+            if (searchResult){
+                description = searchResult.description;
+            }else{
+                description = "This item is not in stock list.";
+            }
+        }
+        const eleItemLine2 = document.createElement('div');
+        eleItemLine2.innerText = description;
+        eleItem.appendChild(eleItemLine2);
+        // Now add both lines of this sold item to the items container
+        eleItems.appendChild(eleItem);
+    });
+    return eleItems;
+}
 
-// Also exit on ESC key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape' && textarea.classList.contains('fullscreen')) {
-        exitFullscreen();
+// Total up sales totals.
+//items: 
+// //[[code, quantity, price], [code, quantity, price], ...]
+function addItemsDollarTotals(items) {
+    console.log("Items: ", items);
+    let itemsTotal = 0;
+    items.forEach(item => {
+        // Need to add total for this item (qty * price)
+        const itemQuantity = Number(item[1]);
+        const itemPrice = Number(item[2]);
+        const itemTotal = itemQuantity * itemPrice;
+        itemsTotal += itemTotal;
+    });
+    return itemsTotal;
+}
+
+// ------------Google Sheets writing and reading functions -----------------
+// Write data using JSONP
+async function appendGoogleSheet(sheetName, transactions) {
+    try {
+        console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
+        const gmtDate = Date();
+        console.log("transaction length", transactions.length);
+        if (transactions.length > 0){
+            const result = await client.appendData(sheetName, transactions);
+            console.log('appendGoogleSheet Success:', result);
+            storedLastUpdateTime.clearTransactions();
+            console.log("**last update time to store: ", formatGmtDateTimeNumber(gmtDate));
+            storedLastUpdateTime.addTransaction([formatGmtDateTimeNumber(gmtDate)]);
+            const lastUpdated = storedLastUpdateTime.getTransactions();
+            console.log("===Last stored time: ", lastUpdated);
+        }
     }
+    catch (error) {
+        console.error('appendGoogleSheet Request Failed:', error);
+        throw error;
+    };
+}
+//Read data using JSONP
+async function readGoogleSheet(sheetName) {
+    console.log("Initiating readGoogleSheet read request...");
+    try {
+        console.log('Starting readGoogleSheet read request...');
+        const result = await client.readData(sheetName);
+        console.log ('readGoogleSheet Result: ', result);
+        if (result.success) {
+            console.log('readGoogleSheet Data retrieved successfully:', result.data);
+            let stockInfo = result.data;
+            console.log("stockInfo: ", stockInfo);
+            console.log("stockInfo[0]: ", stockInfo[0]);
+            console.log("stockInfo[0][0]: ", stockInfo[0][0]);
+            stockInfo.shift();   // don't want the header
+            // store the stock info locally.
+            storeStock.clearTransactions();
+            storeStock.addTransaction(stockInfo);
+            //const stockStored = storeStock.getTransactions();
+            //console.log("stock stored: ", stockStored);
+            
+            // Need to refresh the local stored instance of this data.
+            //searchManager.refreshData(storeStock.getTransactions()[0]);
+            searchManager.refreshData(stockInfo);
+            clearMessage();
+            setMessage("Stock data downloaded successfully.");  
+            return result.data;
+        } else {
+            console.error('readGoogleSheet Failed to retrieve data:', result.message);
+            return [];
+        }
+    } catch (error){
+        console.error('readGoogleSheet Read Request Failed:', error);
+        return [];
+    }
+}
+// -----end of ------Google Sheets writing and reading functions -----------------
+
+//---End of--- add button event listener for sales upload and associated functions ---------------------
+
+// Add event listener on the Ausil code entry input field to clear search results
+// when user alters the code. At this point, the displayed details become invalid.
+document.getElementById("inputCode").addEventListener('input', (e) => {
+    console.log("event on inputCode change - clear ausil item details", e);
+    clearDetailsWrapper();
 });
 
-// Exit when clicking overlay
-overlay.addEventListener('click', function(){
-    console.log("Overlay clicked");
-    exitFullscreen();
-});
+//-------add button event listener for search associated functions ---------------------
 
-// Clear textarea
-textareaClearBtn.addEventListener('click', function() {
-    textarea.value = '';
-    textarea.focus();
-});
+// ==================== SEARCH FUNCTIONS ====================
+let globalResultsArray = [];
 
-textarea.addEventListener('input', function() {
-    console.log('Textarea input:', this.value);
-});
+document.getElementById("detailsSearch").addEventListener('click', doSearchTextFromButton);
+document.getElementById("search-input").addEventListener('input', doSearchText);
+//document.getElementById("search-input").addEventListener('keydown', doSearchText);
 
-// Auto-resize (optional)
-textarea.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 300) + 'px';
-});
+// Hide the search results area on initialisation
+document.getElementById("search-container").style.display = 'none';
 
-// Show/hide clear button
-textarea.addEventListener('input', function() {
-    textareaClearBtn.style.visibility = this.value ? 'visible' : 'hidden';
-});
+function doSearchTextFromButton(){
+    clearMessage();
+    clearDetailsWrapper();
+    const searchText = document.getElementById("inputCode").value;
+    document.getElementById("search-input").value = searchText;
+    document.getElementById("search-container").style.display = 'block';
+    doSearchText().then(() => {
+        console.log("doSearchTextFromButton completed.");
+    }).catch((error) => {
+        console.error("Error in doSearchTextFromButton:", error);
+    });
+}
 
-// Initialize
-textareaClearBtn.style.visibility = textarea.value ? 'visible' : 'hidden';
+async function doSearchText(){
+    const searchText = document.getElementById("search-input").value;
+    console.log("searchText: ", searchText);
+    if (searchText.trim() == "") return;
+    const foundItem = searchManager.searchByCode(searchText);
+    console.log("foundItem: ", foundItem);
+    if (foundItem){
+        // update ausil Code entry with this foundItem details
+        document.getElementById("inputCode").value = foundItem.code;
+        document.getElementById("search-display-area").innerHTML = "";
+        document.getElementById("search-container").style.display = 'none';
+        document.getElementById("details-wrapper").style.display = 'block';
+        document.getElementById("details-cost").innerText = foundItem.price.toFixed(2);
+        document.getElementById("details-description").innerText = foundItem.description;
+    }else{    // not a single item matching Ausid - need a full search
+        //fullTextSearch(searchText, globalResultsArray = []);
+        //const searchResult = searchManager.fullTextSearch(searchText);
+        console.log("about to call genericSearch.");
+        const searchResult = await searchManager.genericSearch(searchText);
+        console.log("return from call to genericSearch.", searchResult);
+        updateResultsDisplay(searchResult);
+    }
+}
 
-// ---End of----- multi-line text input with clear and expand buttons ------------
-*/
+// Export the function for module use
+// and also attach to window for legacy scripts
+window.updateResultsDisplay = updateResultsDisplay;
+export function updateResultsDisplay(searchResults) {
+    console.log("updateResultsDisplay: ", searchResults);
+    document.getElementById("search-container").style.display = 'block';
+    const searchDisplayArea = document.getElementById("search-display-area");
+    const searchInput = document.getElementById("search-input");
+    searchDisplayArea.innerHTML = '';
+    
+    if (searchResults.length === 0) {
+      if (searchInput.value.trim()) {
+        searchDisplayArea.innerHTML = '<div class="no-results">No items found</div>';
+      }
+      return;
+    }
+
+    searchResults.forEach((item, index) => {
+        const searchDisplayArea = document.getElementById("search-display-area"); 
+        const eleDisplayItem = document.createElement('div');     // list of found items
+        eleDisplayItem.classList.add("search-result-item");
+        //create each column for the three parameters for this item.
+        const eleItemCode = document.createElement('span');
+        eleItemCode.classList.add("code");
+        eleItemCode.textContent=item.code;
+        eleDisplayItem.appendChild(eleItemCode);
+        const eleItemDescription = document.createElement('span');
+        eleItemDescription.classList.add("description");
+        eleItemDescription.textContent=item.description;
+        eleDisplayItem.appendChild(eleItemDescription);
+        const eleItemPrice = document.createElement('span');
+        eleItemPrice.classList.add("price");
+        eleItemPrice.textContent=item.price;
+        eleDisplayItem.appendChild(eleItemPrice);
+        eleDisplayItem.addEventListener('click', () => {
+            selectItem(item);
+        });
+        searchDisplayArea.appendChild(eleDisplayItem);
+    });
+    
+}
+
+function selectItem(item) {
+    // Handle item selection
+    console.log("You have selected: ", item);
+    //this.searchInput.value = item.code; // Or whatever you want to do
+    document.getElementById("search-display-area").innerHTML = '';
+    document.getElementById("inputCode").value = item.code;
+    document.getElementById("details-wrapper").style.display = 'block';
+    document.getElementById("details-cost").textContent = item.price.toFixed(2);
+    document.getElementById("details-description").textContent = item.description;
+    document.getElementById("search-container").style.display = 'none';
+    document.getElementById("details-display").style.display = 'block';
+}
+  
+// ==================== UI INTEGRATION ====================
+class SearchComponent {
+  constructor() {
+    this.searchResults = []; // Persistent array for reuse
+    this.lastSearchId = 0;
+    this.initializeUI();
+  }
+  
+  initializeUI() {
+    // Create or get DOM elements
+    this.searchInput = document.getElementById('search-input') || this.createSearchInput();
+    this.resultsContainer = document.getElementById('results-container') || this.createResultsContainer();
+    
+    // Event listeners
+    this.searchInput.addEventListener('input', this.handleSearchInput.bind(this));
+    this.searchInput.addEventListener('keydown', this.handleKeyNavigation.bind(this));
+  }
+  
+  handleSearchInput(event) {
+    const searchTerm = event.target.value;
+    const currentSearchId = ++this.lastSearchId;
+    
+    // Debounce the search
+    setTimeout(() => {
+      if (currentSearchId === this.lastSearchId) {
+        this.performSearch(searchTerm);
+      }
+    }, 150);
+  }
+  
+  performSearch(searchTerm) {
+    // Reuse the same array for results
+    fullTextSearch(searchTerm, this.searchResults);
+    this.updateResultsUI();
+  }
+  
+  
+  handleKeyNavigation(event) {
+    // Optional: Add keyboard navigation support
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      // Implement keyboard navigation logic here
+    } else if (event.key === 'Enter') {
+      // Select first result on enter
+      if (this.searchResults.length > 0) {
+        this.selectItem(this.searchResults[0]);
+      }
+    }
+  }
+  
+  selectItem(item) {
+    // Handle item selection
+    console.log("You have selected: ", item);
+    //this.searchInput.value = item.code; // Or whatever you want to do
+    document.getElementById("search-display-area").innerHTML = '';   
+  }
+  
+  onItemSelected(item) {
+    // Override this method or add event listeners
+    console.log('Item selected:', item);
+  }
+  
+  // Barcode scanner integration
+  scanBarcode(barcode) {
+    const item = searchByCode(barcode);
+    if (item) {
+      this.searchInput.value = item.code;
+      this.selectItem(item);
+    } else {
+      console.log('Barcode not found:', barcode);
+    }
+  }
+}
+
+//---End of--- add button event listener for search associated functions ---------------------
+
+
 
 // Handle PWA lifecycle events
 document.addEventListener('visibilitychange', function() {
@@ -631,7 +1077,6 @@ window.addEventListener('beforeunload', function() {
         stopScanning();
     }
 });
-
 
 // Export the function for module use
 // and also attach to window for legacy scripts
@@ -656,6 +1101,8 @@ export function optionsDisplay() {
     console.log("areaDetailsDisplay: ", areaDetailsDisplay);
     const areaScanDisplay = document.getElementById('scan-display');
     console.log(" areaScanDisplay: ", areaScanDisplay);
+    const areaSoldDisplay = document.getElementById('sold-display');
+    console.log(" areaSoldDisplay: ", areaSoldDisplay);
 
     if (selectedOption === "showScan") {
         console.log("Show control and scan areas");
@@ -663,18 +1110,29 @@ export function optionsDisplay() {
         areaCodeEntryDisplay.style.display = 'none';
         areaDetailsDisplay.style.display = 'none';
         areaScanDisplay.style.display = 'block';
+        areaSoldDisplay.style.display = 'none';
     } else if (selectedOption === "showSales") {
         console.log("Show ontrol, code_entry and data entry areas");
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'block';
         areaDetailsDisplay.style.display = 'block';
         areaScanDisplay.style.display = 'none';
+        areaSoldDisplay.style.display = 'none';
+    } else if (selectedOption === "showSold") {
+        console.log("Show control, sold display areas");
+        areaControlDisplay.style.display = 'block';
+        areaCodeEntryDisplay.style.display = 'none';
+        areaDetailsDisplay.style.display = 'none';
+        areaScanDisplay.style.display = 'none';
+        areaSoldDisplay.style.display = 'block';
+        displaySoldItems();
     } else {
         console.log("Show all areas");
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'block';
         areaDetailsDisplay.style.display = 'block';
         areaScanDisplay.style.display = 'block';
+        areaSoldDisplay.style.display = 'block';
     }
 }
 

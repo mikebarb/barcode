@@ -72,10 +72,12 @@
         pauseScanning();
 
         // post processing - store details locally
-        processScanResults(codeFormat, code);
+        if(getSelectedOption() === "showSales") {
+            processScanResults(codeFormat, code);
+        }
 
         // Now hide the scan area if appropriate
-        optionsDisplay();
+        /////////optionsDisplay();
     }
 
     // Update UI based on scanning state

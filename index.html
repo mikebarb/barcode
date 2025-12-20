@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <!-- Critical PWA tags for iOS -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,20 +11,25 @@
 </head>
 <body>
     <div id="debug.detection"></div>
-    <div id="control-display">  
+    <div id="control-display">
         <div class="control-title">Control region</div>
-        <div class="customDropdown">
-            <div class=="dropdownSelected" id="dropdownSelected">
-                Select option.
+        <div id="control-row">
+            <div class="customDropdown">
+                <div class="dropdownSelected" id="dropdownSelected">
+                    Select option
+                </div>
+                <div class="dropdownOptions" id="dropdownOptions">
+                    <div class="dropdownOption" data-value="showSales">Sales</div>
+                    <div class="dropdownOption" data-value="showSold">Sold</div>
+                    <div class="dropdownOption" data-value="showScan">Scan</div>
+                    <div class="dropdownOption" data-value="showSearch">Search</div>
+                    <div class="dropdownOption" data-value="showCheckOut">Check Out</div>
+                    <div class="dropdownOption" data-value="showStolen">Stolen</div>
+                    <div class="dropdownOption" data-value="showCheckIn">Check In</div>
+                </div>
             </div>
-            <div class="dropdownOptions" id="dropdownOptions">
-                <div class="dropdownOption" data-value="showScan">Scan</div>
-                <div class="dropdownOption" data-value="showSearch">Search</div>
-                <div class="dropdownOption" data-value="showCheckOut">Check Out</div>
-                <div class="dropdownOption" data-value="showSales">Sales</div>
-                <div class="dropdownOption" data-value="showStolen">Stolen</div>
-                <div class="dropdownOption" data-value="showCheckIn">Check In</div>
-            </div>
+            <button id="upload-sales" class="controlButton">Upload</button>
+            <button id="download-stock" class="controlButton">Download</button>
         </div>
     </div>
     <div id="code-entry-container">
@@ -32,9 +37,21 @@
             <label for="inputCode">Ausil Code entry</label>
             <input type="text" id="inputCode" name="inputCode" placeholder="Enter text or scan barcode" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         </div>
+        <div id="details-wrapper">
+            <div id="details-cost"></div>
+            <div id="details-description"></div>
+        </div>
         <div id="code-entry-buttons"> 
             <button id="scanButton" class="controlButton">Scan</button>
-            <button id="detailsSearch" class="controlButton" disabled>Search</button>
+            <button id="detailsSearch" class="controlButton">Search</button>
+        </div>
+    </div>
+    <div id="search-container">
+        <div id = "search-input-area">
+            <label for="search-input">Search for:</label>
+            <input type="text" id="search-input" name="search-input" placeholder="Enter text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        </div>
+        <div id = "search-display-area" class = "search-results">
         </div>
     </div>
     <div id="details-display">
@@ -44,7 +61,7 @@
             <div class="numeric-input-label">Quantity:</div> 
             <div class="numberic-input-wrapper">
                 <button class="numeric-decrement">-</button>
-                <input type="text" id="quantityNumbericInput" value="0" inputmode="numeric">
+                <input type="text" id="quantityNumbericInput" value="1" inputmode="numeric">
                 <button class="numeric-increment">+</button>
             </div>
             <button id="add-item-button">Add</button>
@@ -63,12 +80,24 @@
         </div>
             <div id="items-to-purchase" class="products-list">
         </div>
+        <!-- type of sale - drop down list -->
+        <div class="customDropdown">
+                <div class="dropdownSelected" id="dropdownSaleType">
+                    Select option.
+                </div>
+                <div class="dropdownOptions" id="dropdownSaleTypeOptions">
+                    <div class="dropdownOption" data-value="cash">Cash</div>
+                    <div class="dropdownOption" data-value="bank transfer">Bank Transfer</div>
+                    <div class="dropdownOption" data-value="ministry">Ministry</div>
+                    <div class="dropdownOption" data-value="gift">Gift</div>
+                </div>
+        </div>
 
         <!-- email - Single line text input with clear and copy buttons -->
         <div class="text-input-container" data-type="single">
             <label for="emailTextInput">eMail:</label>
             <div class="input-wrapper">
-                <input type="text" class="text-input" id="emailTextInput" placeholder="Enter email address" data-clearable>
+                <input type="email" class="text-input" id="emailTextInput" placeholder="Enter email address" data-clearable>
                 <div class="input-controls">
                     <button class="control-btn clear-btn" title="Clear">×</button>
                 </div>
@@ -102,9 +131,6 @@
     </div>
     <div id="scan-display">
         <p>Barcode Scanner using QuaggaJS</p>
-        <a href="mailto:recipient@example.com?subject=Your Subject&body=Your Message Body">
-        Send Email
-        </a>
         <div id="scanner-container"></div> <!-- Empty container for Quagga -->
         <div id="error-msg"></div>
         <div id="code">No codes yet.</div>
@@ -115,6 +141,11 @@
             <button id="pauseButton" disabled>Pause</button>
             <button id="stopButton" disabled>Stop</button>
         </div>
+    </div>
+
+    <div id="sold-display" class="products-list">
+        <h1>Sold</h1>
+        <div id="sold-container"></div> <!-- Empty container for sold items -->
     </div>
 
     <!-- Load QuaggaJS from a CDN 

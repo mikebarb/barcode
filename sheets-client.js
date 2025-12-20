@@ -4,7 +4,7 @@ export class GoogleSheetsJSONPClient {
   }
   
   // Append data using JSONP
-  appendData(rows) {
+  appendData(sheetName, rows) {
     console.log('Preparing to append data via appendData:', rows); // DEBUG
     return new Promise((resolve, reject) => {
       const callbackName = 'appendData_callback_' + Math.round(100000 * Math.random());
@@ -20,10 +20,14 @@ export class GoogleSheetsJSONPClient {
       };
       
       // Encode data to be used as a URL parameter
+      console.log("rows: ", rows);
       const encodedData = encodeURIComponent(JSON.stringify({ rows: rows }));
+      const encodedData2 = encodeURIComponent(JSON.stringify({ sheet: sheetName }));
+      //?param1=${encodeURIComponent(JSON.stringify(data1))}&param2=${encodeURIComponent(JSON.stringify(data2))}`;
+
       
       // Build the URL
-      const url = `${this.scriptUrl}?callback=${callbackName}&data=${encodedData}`;
+      const url = `${this.scriptUrl}?callback=${callbackName}&sheet=${sheetName}&data=${encodedData}`;
       //const url = `${this.scriptUrl}?callback=${callbackName}`;
       console.log('Making appendData request to:', url); // DEBUG
       script.src = url;
@@ -46,7 +50,7 @@ export class GoogleSheetsJSONPClient {
       // Add to page
       document.body.appendChild(script);
       
-      // Timeout after 30 seconds
+      // Timeout after 60 seconds
       setTimeout(() => {
         if (window[callbackName]) {
           console.log('appendData timeout - callback never called');
@@ -56,12 +60,12 @@ export class GoogleSheetsJSONPClient {
           }
           reject(new Error('appendData timeout'));
         }
-      }, 30000);
+      }, 60000);
     });
   }
   
   // Read data using JSONP
-  readData() {
+  readData(sheetName) {
     return new Promise((resolve, reject) => {
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       const script = document.createElement('script');
@@ -72,7 +76,12 @@ export class GoogleSheetsJSONPClient {
         resolve(data);
       };
       
-      const url = `${this.scriptUrl}?callback=${callbackName}`;
+      //const encodedData = encodeURIComponent(JSON.stringify({ sheet: sheetName }));
+      console.log("sheetname: ", sheetName);
+      // Build the URL
+      const url = `${this.scriptUrl}?callback=${callbackName}&sheet=${sheetName}`;
+      console.log("making google read request url", url);
+      //const url = `${this.scriptUrl}?callback=${callbackName}`;
       script.src = url;
       
       script.onerror = (error) => {

@@ -1,0 +1,127 @@
+// Web App URL
+// https://script.google.com/a/macros/mikebarb.net/s/AKfycbxQ_PK85KGvZ9N-iRGFc_KzSL9tKdYfkzCkevF5dpbx_vJhF-RmiBy23iT0OegVDjGa/exec
+
+// Google Apps Script Code
+// At the TOP of your script, define your spreadsheet ID
+const SPREADSHEET_ID = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME'; // Your actual ID here
+// FIXED: Use explicit spreadsheet ID
+//const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+//const sheet = spreadsheet.getSheetByName('Transactions');
+
+function doGet(e) {
+  // For JSONP, we use GET requests with parameters
+  const callback = e.parameter.callback;
+  const dataParam = e.parameter.data;
+  
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName('Transactions');
+  
+  try {
+    let result;
+    
+    if (dataParam) {
+      // This is an append request
+      Logger.log("This is an append request.");
+      const postData = JSON.parse(dataParam);
+      
+      if (postData.rows && Array.isArray(postData.rows)) {
+        postData.rows.forEach(row => {
+          if (Array.isArray(row) && row.length > 0) {
+            sheet.appendRow(row);
+          }
+        });
+        
+        result = {
+          success: true,
+          message: `Appended ${postData.rows.length} rows`
+        };
+        
+        // Add this to your doGet function after appending rows:
+        const duplicatesRemoved = removeDuplicatesByColumns(sheet, [0, 5]); // Columns to check for duplicates
+
+      } else {
+        throw new Error('No valid rows data');
+      }
+    } else {
+      // This is a read request
+      const sheetData = sheet.getDataRange().getValues();
+      result = {
+        success: true,
+        data: sheetData
+      };
+    }
+    
+    // Always return JSONP if callback provided
+    if (callback) {
+      return ContentService.createTextOutput(
+        callback + '(' + JSON.stringify(result) + ')'
+      ).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    } else {
+      return ContentService.createTextOutput(
+        JSON.stringify(result)
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+  } catch (error) {
+    const errorResult = {
+      success: false,
+      message: error.toString()
+    };
+    
+    if (callback) {
+      return ContentService.createTextOutput(
+        callback + '(' + JSON.stringify(errorResult) + ')'
+      ).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    } else {
+      return ContentService.createTextOutput(
+        JSON.stringify(errorResult)
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+}
+
+// And add this function to remove duplicates, based on indexed columns:
+function removeDuplicatesByColumns(sheet, columnIndexes = [0, 5]) {
+  Logger.log("removeDuplicatesByColumns called.");
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const uniqueRows = new Set();
+  const cleanedData = [headers];
+  
+  let duplicatesCount = 0;
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    
+    // Create key from specified columns (e.g., col 0 = date, col 1 = barcode)
+    const keyParts = columnIndexes.map(index => {
+      const value = row[index];
+      return value ? value.toString().trim() : '';
+    });
+    const rowKey = keyParts.join('|');
+    
+    if (!uniqueRows.has(rowKey)) {
+      uniqueRows.add(rowKey);
+      cleanedData.push(row);
+    } else {
+      duplicatesCount++;
+      console.log('Duplicate removed:', row);
+    }
+  }
+  
+  if (duplicatesCount > 0) {
+    // Preserve formatting and formulas by only clearing content
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn())
+      .clearContent();
+    
+    // Write back unique data (skip header row in write)
+    if (cleanedData.length > 1) {
+      sheet.getRange(2, 1, cleanedData.length - 1, cleanedData[0].length)
+        .setValues(cleanedData.slice(1));
+    }
+  }
+  
+  return duplicatesCount;
+}
+
