@@ -127,8 +127,9 @@ const inputManager = new InputManager();
 //const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
-
+const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
 const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
 const storeScans = new localStorageManager('scans');
 const storeSales = new localStorageManager('sales');
