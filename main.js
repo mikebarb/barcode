@@ -122,17 +122,13 @@ function registerServiceWorker() {
 
 // Initialize the text input manager
 const inputManager = new InputManager();
-//https://docs.google.com/spreadsheets/d/1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME/edit?usp=sharing
 
 // Test deployment
-//  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev'
-// https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev?data={"rows":[["test","data"]]}
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyweaJXgpoJGxN5trIS_KQvdq7p2YZx2lya-c3Lx5X8iwNDCzhtTorCyYx_dDVFAZCW/exec'
-//https://script.google.com/macros/s/AKfycbyweaJXgpoJGxN5trIS_KQvdq7p2YZx2lya-c3Lx5X8iwNDCzhtTorCyYx_dDVFAZCW/exec
-//https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec'
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+
 const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
 const storeScans = new localStorageManager('scans');
 const storeSales = new localStorageManager('sales');
@@ -628,13 +624,23 @@ document.getElementById("download-stock").addEventListener('click', (e) => {
 // Initialize the search manager for searching against stock data
 const searchManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
 
+// Clear the sold items display
+function cleardisplayPurchases() {
+    const purchasesContainer = document.getElementById('purchases-container');
+    purchasesContainer.innerHTML = ''; // Clear previous content
 
-// This retrieves and displays all sold items from local storage
-function displaySoldItems() {
-    // Keep track of totals
-    const totals = {
-        grandTotal: 0
-    };
+}
+
+// Clear the sold items display
+function cleardisplaySold() {
+    const soldContainer = document.getElementById('sold-container');
+    soldContainer.innerHTML = ''; // Clear previous content
+
+}
+
+
+// This retrieves and displays all Purchases from local storage
+function displaySold() {
     const soldContainer = document.getElementById('sold-container');
     soldContainer.innerHTML = ''; // Clear previous content
 
@@ -644,6 +650,58 @@ function displaySoldItems() {
 
     if (soldItems.length === 0) {
         soldContainer.innerHTML = '<p>No sold items to display.</p>';
+        return;
+    }
+
+    // Keep track of all items sold
+    const items = {};
+
+    // Display all the sold items.
+    // eleContainer
+    //  -> eleItems (the items container)
+    //     -> eleItem (for each sold item)
+    soldItems.forEach(purchase => {
+        console.log("purchase: ", purchase);
+        purchase[5].forEach(item => {
+            const itemCode = item[0];
+            const itemQuantity = item[1];
+            if (items[itemCode]){
+                items[itemCode] += itemQuantity;
+            }else{
+                items[itemCode] = itemQuantity;
+            }
+        });
+    });
+    console.log("items", items);
+
+    // Display all the items
+    const eleItems = document.createElement('div');
+    eleItems.classList.add('sold-items');
+    for (const [key, value] of Object.entries(items).sort()) {
+        // key = code, value = quantity of this item sold
+        // Firt need to get item details
+        //const thisItem = searchManager.searchByCode(key);
+        //console.log("thisItem: ", thisItem); 
+        eleItems.appendChild(createDomItem([key, value, 0]));
+    }
+    soldContainer.appendChild(eleItems);
+}
+
+// This retrieves and displays all Purchases from local storage
+function displayPurchases() {
+    // Keep track of totals
+    const totals = {
+        grandTotal: 0
+    };
+    const purchasesContainer = document.getElementById('purchases-container');
+    purchasesContainer.innerHTML = ''; // Clear previous content
+
+    // Get all the sales from local storage
+    const soldItems = storeSales.getTransactions() || [];
+    console.log("soldItems: ", soldItems);
+
+    if (soldItems.length === 0) {
+        purchasesContainer.innerHTML = '<p>No sold items to display.</p>';
         return;
     }
 
@@ -660,9 +718,9 @@ function displaySoldItems() {
 
         const eleCommon = createDomPurchaseCommon(purchase);
         elePurchase.appendChild(eleCommon);
-        const eleItemsContent = createDomItem(purchase[5]);
+        const eleItemsContent = createDomItems(purchase[5]);
         elePurchase.appendChild(eleItemsContent);
-        soldContainer.appendChild(elePurchase);
+        purchasesContainer.appendChild(elePurchase);
 
         const thisTotal = addItemsDollarTotals(purchase[5]);
         const saleType = purchase[1];
@@ -677,7 +735,7 @@ function displaySoldItems() {
     // Now display the totals`
     const eleTotals = createDomDisplayTotals(totals);
     eleTotals.classList.add('sold-totals');
-    soldContainer.prepend(eleTotals);
+    purchasesContainer.prepend(eleTotals);
 }
 
 function createDomDisplayTotals(totals) {
@@ -694,6 +752,7 @@ function createDomDisplayTotals(totals) {
 }
 
 function formatDateTimeGMT(dateTimeStr) {
+    console.log("dateTimeStr1", dateTimeStr);
     // Extract components from the GMT string
     const year = parseInt(dateTimeStr.substring(0, 4));
     const month = parseInt(dateTimeStr.substring(4, 6)) - 1; // Month is 0-indexed
@@ -720,12 +779,6 @@ function formatDateTimeGMT(dateTimeStr) {
     return `${dayName} ${localDay}/${localMonth}/${localYear} ${localHours}:${localMinutes}`;
 }
 
-// Usage:
-//const gmtDateTime = "20231220124530"; // GMT: December 20, 2023, 12:45:30
-//const localFormatted = formatDateTimeGMT(gmtDateTime);
-//console.log(localFormatted); // Will show local time equivalent
-
-
 function createDomPurchaseCommon(purchase) {
     const eleCommon = document.createElement('div');
     eleCommon.classList.add('sold-common');
@@ -751,52 +804,67 @@ function createDomPurchaseCommon(purchase) {
 // Create DOM elements to diplay items over two lines.
 //items: 
 // //[[code, quantity, price], [code, quantity, price], ...]
-function createDomItem(items) {
+function createDomItems(items) {
     console.log("Items: ", items);
     // add in a single line the item details - code, qty, price
     const eleItems = document.createElement('div');
     //eleItem.classList.add('item-header');
     items.forEach(item => {
+        const eleItem = createDomItem(item);
+        eleItems.appendChild(eleItem);
+    });
+    return eleItems;
+}
+
+function createDomItemDetail(value){
+    const eleItemDetail = document.createElement('span');
+    //eleItemDetail.classList.add('soldItemDetail');
+    eleItemDetail.innerText = value;
+    return eleItemDetail;
+}
+
+// item: [code, quantity, price]
+function createDomItem(item){
         const eleItem = document.createElement('div');
         eleItem.classList.add('product-item');
         const eleItemLine1 = document.createElement('div');
         eleItemLine1.classList.add('item-header');
-        for (let i = 0; i < item.length; i++){
-            const eleItemDetail = document.createElement('span');
-            //eleItemDetail.classList.add('soldItemDetail');
-            eleItemDetail.innerText = item[i];
-            eleItemLine1.appendChild(eleItemDetail);
-        };
+        // Search stock for non-changeable info about this item
+        // description & price
+        const itemCode = item[0];
+        let description = "";
+        let itemPrice = 0;
+        if(itemCode === "Discount"){
+            description = "Discount Applied";
+            itemPrice = 1;
+        }else{
+            const searchResult = searchManager.searchByCode(itemCode);
+            if (searchResult){
+                description = searchResult.description;
+                itemPrice = searchResult.price;
+                
+            }else{
+                description = "This item is not in stock list.";
+            }
+        }
+        eleItemLine1.appendChild(createDomItemDetail(item[0]));
+        eleItemLine1.appendChild(createDomItemDetail(item[1]));
+        eleItemLine1.appendChild(createDomItemDetail(itemPrice));
         // Need to add total for this item (qty * price)
         const itemQuantity = Number(item[1]);
-        const itemPrice = Number(item[2]);
+        //const itemPrice = Number(item[2]);
         const itemTotal = itemQuantity * itemPrice;
         const eleItemDetail2 = document.createElement('span');
         //eleItemDetail2.classList.add('soldItemDetail');
         eleItemDetail2.innerText = itemTotal.toFixed(2);
         eleItemLine1.appendChild(eleItemDetail2);
         eleItem.appendChild(eleItemLine1);
-        // Now want the description - do search using code. 
-        const itemCode = item[0];
-        let description = "";
-        if(itemCode === "Discount"){
-            description = "Discount Applied";
-        }else{
-            const searchResult = searchManager.searchByCode(itemCode);
-            if (searchResult){
-                description = searchResult.description;
-            }else{
-                description = "This item is not in stock list.";
-            }
-        }
+ 
         const eleItemLine2 = document.createElement('div');
         eleItemLine2.innerText = description;
         eleItem.appendChild(eleItemLine2);
-        // Now add both lines of this sold item to the items container
-        eleItems.appendChild(eleItem);
-    });
-    return eleItems;
-}
+        return eleItem;
+    }
 
 // Total up sales totals.
 //items: 
@@ -814,21 +882,88 @@ function addItemsDollarTotals(items) {
     return itemsTotal;
 }
 
+// -------------------------  Settings  ----------------------------------
+// We want to store some user settings in local storage
+
+
+
+export class Settings {
+    constructor() {
+        this.storeSettings = new localStorageManager("settings");
+        //this.storeSettings.clearTransactions();    //DIAGNOSTIC ONLY
+        this.currentSettings = this.storeSettings.getObject() || {};
+        if(!("spreadsheetid" in this.currentSettings)){   // need default value if not already set.
+            this.currentSettings.spreadsheetid = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+            this.storeSettings.setObject(this.currentSettings);
+        }
+        console.log("currentSettings", this.currentSettings);
+        if(!("deviceid" in this.currentSettings)){   // need default value if not already set.
+            this.currentSettings.deviceid = 'Not_Set';
+            this.storeSettings.setObject(this.currentSettings);
+        }
+    }
+
+    setSpreadSheetId(spreadSheetId){
+        this.currentSettings.spreadsheetid = spreadSheetId;
+        this.storeSettings.setObject(this.currentSettings);
+    }
+    getSpreadSheetId(){
+        return this.currentSettings.spreadsheetid;
+    }
+    setDeviceId(deviceId){
+        this.currentSettings.deviceid = deviceId;
+        this.storeSettings.setObject(this.currentSettings);
+    }
+    getDeviceId(){
+        return this.currentSettings.deviceid;
+    }
+}
+
+const currentSettings = new Settings();
+document.getElementById("settingsSpreadSheetIdInput").value = currentSettings.getSpreadSheetId();
+
+//const eleInputSpreadSheetId = document.getElementById("settingsSpreadSheetIdInput");
+//const eleButtonSpreadSheetId = document.getElementById("settingsAddSpreadSheetId");
+
+document.getElementById("settingsAddSpreadSheetId").addEventListener('click', (e) => {
+//document.getElementById("download-stock").addEventListener('click', (e) => {
+    const eleInputSpreadSheetId = document.getElementById("settingsSpreadSheetIdInput");
+    console.log("event to update spread sheet id", e);
+    console.log("spread sheet id", eleInputSpreadSheetId.value);
+
+    const result = confirm("Are you sure you want to proceed with updating the Spreadsheet Id?");
+    if (result) {
+        console.log("User clicked OK/Proceed");
+        currentSettings.setSpreadSheetId(eleInputSpreadSheetId.value);
+    }
+});
+
+//-------------------- end of settings ----------------------------------
+
 // ------------Google Sheets writing and reading functions -----------------
+function getSpreadSheetId(){
+    //const spreadSheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+    const spreadSheetId = currentSettings.getSpreadSheetId();
+    return spreadSheetId;
+}
+
 // Write data using JSONP
 async function appendGoogleSheet(sheetName, transactions) {
+    const spreadSheetId = getSpreadSheetId();
     try {
-        console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
+        //console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
         const gmtDate = Date();
-        console.log("transaction length", transactions.length);
+        //console.log("transaction length", transactions.length);
         if (transactions.length > 0){
-            const result = await client.appendData(sheetName, transactions);
-            console.log('appendGoogleSheet Success:', result);
+            const result = await client.appendData(spreadSheetId, sheetName, transactions);
+            //console.log('appendGoogleSheet Success:', result);
             storedLastUpdateTime.clearTransactions();
-            console.log("**last update time to store: ", formatGmtDateTimeNumber(gmtDate));
+            //console.log("**last update time to store: ", formatGmtDateTimeNumber(gmtDate));
             storedLastUpdateTime.addTransaction([formatGmtDateTimeNumber(gmtDate)]);
             const lastUpdated = storedLastUpdateTime.getTransactions();
-            console.log("===Last stored time: ", lastUpdated);
+            //console.log("===Last stored time: ", lastUpdated);
+            clearMessage();
+            setMessage("Sales data uploaded successfully.");  
         }
     }
     catch (error) {
@@ -838,17 +973,18 @@ async function appendGoogleSheet(sheetName, transactions) {
 }
 //Read data using JSONP
 async function readGoogleSheet(sheetName) {
-    console.log("Initiating readGoogleSheet read request...");
+    const spreadSheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+    //console.log("Initiating readGoogleSheet read request...");
     try {
-        console.log('Starting readGoogleSheet read request...');
-        const result = await client.readData(sheetName);
-        console.log ('readGoogleSheet Result: ', result);
+        //console.log('Starting readGoogleSheet read request...');
+        const result = await client.readData(spreadSheetId, sheetName);
+        //console.log ('readGoogleSheet Result: ', result);
         if (result.success) {
-            console.log('readGoogleSheet Data retrieved successfully:', result.data);
+            //console.log('readGoogleSheet Data retrieved successfully:', result.data);
             let stockInfo = result.data;
-            console.log("stockInfo: ", stockInfo);
-            console.log("stockInfo[0]: ", stockInfo[0]);
-            console.log("stockInfo[0][0]: ", stockInfo[0][0]);
+            //console.log("stockInfo: ", stockInfo);
+            //console.log("stockInfo[0]: ", stockInfo[0]);
+            //console.log("stockInfo[0][0]: ", stockInfo[0][0]);
             stockInfo.shift();   // don't want the header
             // store the stock info locally.
             storeStock.clearTransactions();
@@ -1101,31 +1237,67 @@ export function optionsDisplay() {
     console.log("areaDetailsDisplay: ", areaDetailsDisplay);
     const areaScanDisplay = document.getElementById('scan-display');
     console.log(" areaScanDisplay: ", areaScanDisplay);
+    const areaPurchasesDisplay = document.getElementById('purchases-display');
+    console.log(" areaPurchasesDisplay: ", areaPurchasesDisplay);
     const areaSoldDisplay = document.getElementById('sold-display');
     console.log(" areaSoldDisplay: ", areaSoldDisplay);
-
+    const areaSettingsDisplay = document.getElementById('settings-display');
+    console.log(" areaSettingsDisplay: ", areaSettingsDisplay);
     if (selectedOption === "showScan") {
         console.log("Show control and scan areas");
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'none';
         areaDetailsDisplay.style.display = 'none';
         areaScanDisplay.style.display = 'block';
+        areaPurchasesDisplay.style.display = 'none';
         areaSoldDisplay.style.display = 'none';
+        areaSettingsDisplay.style.display = 'none';
+        cleardisplaySold();
+        cleardisplayPurchases();
     } else if (selectedOption === "showSales") {
         console.log("Show ontrol, code_entry and data entry areas");
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'block';
         areaDetailsDisplay.style.display = 'block';
         areaScanDisplay.style.display = 'none';
+        areaPurchasesDisplay.style.display = 'none';
         areaSoldDisplay.style.display = 'none';
+        areaSettingsDisplay.style.display = 'none';
+        cleardisplaySold();
+        cleardisplayPurchases();
+    } else if (selectedOption === "showPurchases") {
+        console.log("Show control, sold display areas");
+        areaControlDisplay.style.display = 'block';
+        areaCodeEntryDisplay.style.display = 'none';
+        areaDetailsDisplay.style.display = 'none';
+        areaScanDisplay.style.display = 'none';
+        areaPurchasesDisplay.style.display = 'block';
+        areaSoldDisplay.style.display = 'none';
+        areaSettingsDisplay.style.display = 'none';
+        cleardisplaySold();
+        displayPurchases();
     } else if (selectedOption === "showSold") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
         areaCodeEntryDisplay.style.display = 'none';
         areaDetailsDisplay.style.display = 'none';
         areaScanDisplay.style.display = 'none';
+        areaPurchasesDisplay.style.display = 'none';
         areaSoldDisplay.style.display = 'block';
-        displaySoldItems();
+        areaSettingsDisplay.style.display = 'none';
+        cleardisplayPurchases();
+        displaySold();
+    } else if (selectedOption === "showSettings") {
+        console.log("Show control, sold display areas");
+        areaControlDisplay.style.display = 'block';
+        areaCodeEntryDisplay.style.display = 'none';
+        areaDetailsDisplay.style.display = 'none';
+        areaScanDisplay.style.display = 'none';
+        areaPurchasesDisplay.style.display = 'none';
+        areaSoldDisplay.style.display = 'none';
+        areaSettingsDisplay.style.display = 'block';
+        cleardisplaySold();
+        cleardisplayPurchases();
     } else {
         console.log("Show all areas");
         areaControlDisplay.style.display = 'block';
@@ -1133,6 +1305,7 @@ export function optionsDisplay() {
         areaDetailsDisplay.style.display = 'block';
         areaScanDisplay.style.display = 'block';
         areaSoldDisplay.style.display = 'block';
+        cleardisplayPurchases();
     }
 }
 

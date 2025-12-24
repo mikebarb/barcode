@@ -1,6 +1,3 @@
-// Web App URL
-// https://script.google.com/macros/s/AKfycbx_DqDOSn7YDqghfJWrbemoZadQn3i22e0oR62YzVMphBxlQeJc62QPkYpgNXmznn6A/exec
-
 // Google Apps Script Code
 // At the TOP of your script, define your spreadsheet ID
 const SPREADSHEET_ID = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME'; // Your actual ID here
@@ -10,9 +7,17 @@ const SPREADSHEET_ID = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME'; // Your a
 const headerNames = ["date - time", "sale type", "email", "name", "comment","ausid barcode", "quantity", "cost", "consignment", "description"];
 
 
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🚀 My Tools')
+    .addItem('Summarise Consignments', 'processData')
+    .addToUi();
+}
 
 function processData(){
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  //const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  //const sheet = spreadsheet.getSheetByName("transactions");
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("transactions");
   const sheetData = sheet.getDataRange().getValues();
 
@@ -58,8 +63,8 @@ function processData(){
       }
     }
   });
-  console.log("processCategories",processCategories);
-  console.log("processCategoryConsignment", processCategoryConsignment);
+  //console.log("processCategories",processCategories);
+  //console.log("processCategoryConsignment", processCategoryConsignment);
 
   // IN the Ausil office, PR and Ministy generate one invoice sheet each.
   // All the other categories are invoice by consignment within each category.
@@ -105,9 +110,9 @@ function processData(){
 }
 
 function processSheet(spreadsheet, sheetName, processCategory, processConsignment, sheetData, takenConsignment, takenDescription, processSheet1){
-  console.log("====================================================");
-  console.log("processCategory: " + processCategory + " processConsignment: " + processConsignment);
-  console.log("====================================================");    
+  //console.log("====================================================");
+  //console.log("processCategory: " + processCategory + " processConsignment: " + processConsignment);
+  //console.log("====================================================");    
   // Delete old sheet and create a new one with headers.
   var processSheet = spreadsheet.getSheetByName(sheetName);
   if (processSheet){
@@ -128,12 +133,12 @@ function processSheet(spreadsheet, sheetName, processCategory, processConsignmen
     (entryCategory == processCategory) ? flagMatchCategory = true : false;
     ((entryConsignment && (entryConsignment == processConsignment)) || (processConsignment == "")) ? flagMatchConsignment = true : false;
     if (processConsignment == "ANY") flagMatchConsignment = true;
-    console.log("***itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
-    console.log("flagMatchCategory: " + flagMatchCategory + " flagMatchConsignment: " + flagMatchConsignment);
+    //console.log("***itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
+    //console.log("flagMatchCategory: " + flagMatchCategory + " flagMatchConsignment: " + flagMatchConsignment);
     if(flagMatchCategory && flagMatchConsignment){
-      console.log("###itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
+      //console.log("###itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
       processSheet1.appendRow(entry);      // Diagnostics
-      console.log (processCategory, entry);
+      //console.log (processCategory, entry);
       var itemCode = entry[5];
       var itemQuantity = entry[6];
       var itemTotal = entry[7];
@@ -163,9 +168,6 @@ function processSheet(spreadsheet, sheetName, processCategory, processConsignmen
     processSheet.appendRow(["", "", "", "", "", key, value, itemTotal]);
   }
   processSheet.appendRow(["", "", "", "", "", "TOTAL", "", total]);
-  //var columnRange = processSheet.getRange('H:H');
-  //columnRange.setNumberFormat('$#,##0.00');
-  //processSheet.getRange('H:H').setNumberFormat('$#,##0.00');
   formatSheet(processSheet);
   formatSheet(processSheet1);
 }
@@ -188,160 +190,6 @@ function formatSheet(sheet){
   }
 }
 
-// Create a fresh spreadsheet
-function createAndShareSpreadsheet() {
-  var ss = SpreadsheetApp.create('Team Project');
-  var url = ss.getUrl();
-  // Share with specific email addresses
-  ss.addEditor('robgordonclements1965@gmail.com');
-  //ss.addViewer('manager@example.com');
-  
-  // Optional: Set sharing permissions
-  DriveApp.getFileById(ss.getId())
-    .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  
-  console.log("url", url);
-  var spreadsheetId = getSpreadsheetIdFromUrl(url); 
-  console.log("spreadsheetId", spreadsheetId);  
-  return url;
-}
-
-function getSpreadsheetIdFromUrl(url) {
-  var regex = /\/d\/([a-zA-Z0-9-_]+)/;
-  var match = url.match(regex);
-  return match ? match[1] : null;
-}
-
-function testLogging() {
-  console.log("Test log message");
-  Logger.log("Logger test message");
-}
 
 
-function doGet(e) {
-  // For JSONP, we use GET requests with parameters
-  const callback = e.parameter.callback;
-  const sheetName = e.parameter.sheet;
-  const dataParam = e.parameter.data;
-  
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName(sheetName);
-  
-  try {
-    let result;
-    //const passedParams = JSON.parse(dataParam);
-      
-    if (dataParam) {
-      // This is an append request
-      const postData = JSON.parse(dataParam);
-      
-      // Insert header if a new sheet.
-      const isEmpty = sheet.getLastRow() === 0 && sheet.getLastColumn() === 0;
-      if (isEmpty){
-        sheet.appendRow(headerNames);
-      }
-
-      if (postData.rows && Array.isArray(postData.rows)) {
-        postData.rows.forEach(row => {
-          if (Array.isArray(row) && row.length > 0) {
-            sheet.appendRow(row);
-          }
-        });
-        
-        result = {
-          success: true,
-          message: `Appended ${postData.rows.length} rows`
-        };
-        
-        // Add this to your doGet function after appending rows:
-        const duplicatesRemoved = removeDuplicatesByColumns(sheet, [0, 5]); // Columns to check for duplicates
-
-      } else {
-        throw new Error('No valid rows data');
-      }
-    } else {
-      // This is a read request
-      const sheetData = sheet.getDataRange().getValues();
-      result = {
-        success: true,
-        data: sheetData
-      };
-    }
-    
-    // Always return JSONP if callback provided
-    if (callback) {
-      return ContentService.createTextOutput(
-        callback + '(' + JSON.stringify(result) + ')'
-      ).setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } else {
-      return ContentService.createTextOutput(
-        JSON.stringify(result)
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-    
-  } catch (error) {
-    const errorResult = {
-      success: false,
-      message: error.toString()
-    };
-    
-    if (callback) {
-      return ContentService.createTextOutput(
-        callback + '(' + JSON.stringify(errorResult) + ')'
-      ).setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } else {
-      return ContentService.createTextOutput(
-        JSON.stringify(errorResult)
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-}
-
-function testRemoveDuplicates(){
-  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName("transactions");
-  removeDuplicatesByColumns(sheet, [0, 5]);
-}
-
-// And add this function to remove duplicates, based on indexed columns:
-function removeDuplicatesByColumns(sheet, columnIndexes = [0, 5]) {
-  
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  const uniqueRows = new Set();
-  const cleanedData = [headers];
-  
-  let duplicatesCount = 0;
-  
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    // Create key from specified columns (e.g., col 0 = date, col 1 = barcode)
-    const keyParts = columnIndexes.map(index => {
-      const value = row[index];
-      return value ? value.toString().trim() : '';
-    });
-
-    const rowKey = keyParts.join('|');
-    
-    if (!uniqueRows.has(rowKey)) {
-      uniqueRows.add(rowKey);
-      cleanedData.push(row);
-    } else {
-      duplicatesCount++;
-    }
-  }
-  
-  if (duplicatesCount > 0) {
-    // Preserve formatting and formulas by only clearing content
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
-    
-    // Write back unique data (skip header row in write)
-    if (cleanedData.length > 1) {
-      sheet.getRange(2, 1, cleanedData.length - 1, cleanedData[0].length).setValues(cleanedData.slice(1));
-    }
-  }
-  
-  return duplicatesCount;
-}
 

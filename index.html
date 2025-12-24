@@ -12,7 +12,6 @@
 <body>
     <div id="debug.detection"></div>
     <div id="control-display">
-        <div class="control-title">Control region</div>
         <div id="control-row">
             <div class="customDropdown">
                 <div class="dropdownSelected" id="dropdownSelected">
@@ -20,12 +19,10 @@
                 </div>
                 <div class="dropdownOptions" id="dropdownOptions">
                     <div class="dropdownOption" data-value="showSales">Sales</div>
+                    <div class="dropdownOption" data-value="showPurchases">Purchases</div>
                     <div class="dropdownOption" data-value="showSold">Sold</div>
                     <div class="dropdownOption" data-value="showScan">Scan</div>
-                    <div class="dropdownOption" data-value="showSearch">Search</div>
-                    <div class="dropdownOption" data-value="showCheckOut">Check Out</div>
-                    <div class="dropdownOption" data-value="showStolen">Stolen</div>
-                    <div class="dropdownOption" data-value="showCheckIn">Check In</div>
+                    <div class="dropdownOption" data-value="showSettings">Settings</div>
                 </div>
             </div>
             <button id="upload-sales" class="controlButton">Upload</button>
@@ -55,7 +52,6 @@
         </div>
     </div>
     <div id="details-display">
-        <h1>Details display</h1>
         <div id="message">This is the message line.</div>
         <div class="numeric-input-container">
             <div class="numeric-input-label">Quantity:</div> 
@@ -87,9 +83,11 @@
                 </div>
                 <div class="dropdownOptions" id="dropdownSaleTypeOptions">
                     <div class="dropdownOption" data-value="cash">Cash</div>
-                    <div class="dropdownOption" data-value="bank transfer">Bank Transfer</div>
+                    <div class="dropdownOption" data-value="eftpos">EFTPOS</div>
+                    <div class="dropdownOption" data-value="etransfer">E-Transfer</div>
                     <div class="dropdownOption" data-value="ministry">Ministry</div>
-                    <div class="dropdownOption" data-value="gift">Gift</div>
+                    <div class="dropdownOption" data-value="pr">PR</div>
+                    <div class="dropdownOption" data-value="account">Account</div>
                 </div>
         </div>
 
@@ -143,11 +141,29 @@
         </div>
     </div>
 
+    <div id="purchases-display" class="products-list">
+        <h1>Purchases</h1>
+        <div id="purchases-container"></div> <!-- Empty container for sold items -->
+    </div>
+
     <div id="sold-display" class="products-list">
-        <h1>Sold</h1>
+        <h1>Sold Items</h1>
         <div id="sold-container"></div> <!-- Empty container for sold items -->
     </div>
 
+    <div id="settings-display">
+        <h1>Settings</h1>
+        <!-- name - Single line text input with clear and copy buttons -->
+        <div class="text-input-container">
+            <label for="settingsSpreadSheetIdInput">Name:</label>
+            <div class="input-wrapper">
+                <input type="text" class="text-input" id="settingsSpreadSheetIdInput" placeholder="SpreadSheetId" data-clearable="">
+                <div class="settings-controls">
+                    <button id="settingsAddSpreadSheetId" class="settings-btn" title="Update">Update SpreadSheet Id</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Load QuaggaJS from a CDN 
     <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
     -->

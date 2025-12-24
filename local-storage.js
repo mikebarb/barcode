@@ -7,24 +7,30 @@ export class localStorageManager {
     // ------------Transaction local storage and retrieval functions -----------------
     // Save transaction to localStorage
     addTransaction(transactionRow) {
-        let scans = JSON.parse(localStorage.getItem(this.name)) || [];
-        console.log("Adding transaction to local storage: ", transactionRow);
-        console.log("Current stored transactions: ", scans);
-        scans.push(transactionRow);
-        console.log("Updated stored transactions: ", scans);
-        localStorage.setItem(this.name, JSON.stringify(scans));
-        console.log("Now check what is stored after transaction saved to local storage.");
-        let scansAfter = JSON.parse(localStorage.getItem(this.name)) || [];
-        console.log("Check - Retrieved stored transactions: ", scansAfter);
-        console.log("scansAfter[0]: ", scansAfter[0]);
-        console.log("scansAfter[0][0]: ", scansAfter[0][0]);
+        let transactions = JSON.parse(localStorage.getItem(this.name)) || [];
+        transactions.push(transactionRow);
+        localStorage.setItem(this.name, JSON.stringify(transactions));
     }
+    setObject(settings) {
+        localStorage.setItem(this.name, JSON.stringify(settings));        
+        console.log("localStorage-after set: ", localStorage);       
+    }
+
     //Get all the transactions from localStorage
     getTransactions() {
-        let scans = JSON.parse(localStorage.getItem(this.name)) || [];
-        console.log("Retrieved stored transactions: ", scans);
-        return scans;
+        let transactions = JSON.parse(localStorage.getItem(this.name)) || [];
+        return transactions;
     }       
+
+    getObject() {
+        const stored = localStorage.getItem(this.name);
+        try {
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            return null; // Handle corrupted JSON
+        }
+    }
+
     // Clear all stored transactions
     clearTransactions() {
         localStorage.removeItem(this.name);
