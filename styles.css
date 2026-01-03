@@ -113,6 +113,8 @@ button:disabled {
 }
 /* end of - style for the Quagga scan library */
 
+
+
 /* Styles for input dropdown selection */
 #control-display {
     background-color: bisque;
@@ -168,8 +170,19 @@ button:disabled {
     justify-content: space-between;
     gap: 4px;
 }
-
 /* end of - styles for upload button */
+
+/* styles for message display */
+#message{
+    color: black;
+    background-color: lightskyblue;
+    border-width: 4px;
+    border-color: blue;
+    margin-top: 4px;
+    padding: 4px;
+}
+/* end of - styles for message display */
+
 
 /* Styles for ausil code input */
 #code-entry-container {

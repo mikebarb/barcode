@@ -124,12 +124,10 @@ function registerServiceWorker() {
 const inputManager = new InputManager();
 
 // Test deployment
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
-const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+//const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
 const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
 const storeScans = new localStorageManager('scans');
 const storeSales = new localStorageManager('sales');
@@ -389,6 +387,10 @@ export function setMessage(message){
     console.log("eleMessage: ", eleMessage);
     document.getElementById("message").style.display = 'block';
     eleMessage.textContent = message;
+    // Now want to remove message after a timeout period - 5 seconds.
+    setTimeout(() => {
+        clearMessage();
+    }, 5000);
 }
 
 function clearMessage(){
@@ -904,9 +906,13 @@ export class Settings {
         }
     }
 
-    setSpreadSheetId(spreadSheetId){
-        this.currentSettings.spreadsheetid = spreadSheetId;
+    setSpreadSheetUrl(spreadSheetUrl){
+        this.currentSettings.spreadsheetUrl = spreadSheetUrl;
+        this.currentSettings.spreadsheetId = extractSpreadsheetId(spreadSheetUrl);
         this.storeSettings.setObject(this.currentSettings);
+    }
+    getSpreadSheetUrl(){
+        return this.currentSettings.spreadsheetUrl;
     }
     getSpreadSheetId(){
         return this.currentSettings.spreadsheetid;
@@ -921,36 +927,98 @@ export class Settings {
 }
 
 const currentSettings = new Settings();
-document.getElementById("settingsSpreadSheetIdInput").value = currentSettings.getSpreadSheetId();
+document.getElementById("settingsSpreadSheetUrlInput").value = currentSettings.getSpreadSheetUrl();
+document.getElementById("settingsDeviceIdInput").value = currentSettings.getDeviceId();
 
-//const eleInputSpreadSheetId = document.getElementById("settingsSpreadSheetIdInput");
-//const eleButtonSpreadSheetId = document.getElementById("settingsAddSpreadSheetId");
 
-document.getElementById("settingsAddSpreadSheetId").addEventListener('click', (e) => {
-//document.getElementById("download-stock").addEventListener('click', (e) => {
-    const eleInputSpreadSheetId = document.getElementById("settingsSpreadSheetIdInput");
+document.getElementById("settingsAddSpreadSheetUrl").addEventListener('click', (e) => {
+    const eleInputSpreadSheetUrl = document.getElementById("settingsSpreadSheetUrlInput");
     console.log("event to update spread sheet id", e);
-    console.log("spread sheet id", eleInputSpreadSheetId.value);
+    console.log("spread sheet id", eleInputSpreadSheetUrl.value);
 
-    const result = confirm("Are you sure you want to proceed with updating the Spreadsheet Id?");
+    const result = confirm("Are you sure you want to proceed with updating the Spreadsheet Url?");
     if (result) {
         console.log("User clicked OK/Proceed");
-        currentSettings.setSpreadSheetId(eleInputSpreadSheetId.value);
+        currentSettings.setSpreadSheetUrl(eleInputSpreadSheetUrl.value);
     }
 });
+
+document.getElementById("settingsAddDeviceId").addEventListener('click', (e) => {
+//document.getElementById("download-stock").addEventListener('click', (e) => {
+    const eleInputDeviceId = document.getElementById("settingsDeviceIdInput");
+    console.log("event to update device id", e);
+    console.log("device id", eleInputDeviceId.value);
+
+    const result = confirm("Are you sure you want to proceed with updating the Device Id?");
+    if (result) {
+        console.log("User clicked OK/Proceed");
+        currentSettings.setDeviceId(eleInputDeviceId.value);
+    }
+});
+
+/* Test with different URL formats
+const testUrls = [
+    'https://docs.google.com/spreadsheets/d/1abc123def456ghi789jkl012mno345pqr678stu901/edit#gid=0',
+    'https://docs.google.com/spreadsheets/d/1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME/edit',
+    'https://docs.google.com/spreadsheets/d/1abc123def456ghi789jkl012mno345pqr678stu901',
+    'https://docs.google.com/spreadsheets/d/1abc123def456ghi789jkl012mno345pqr678stu901/edit?usp=sharing',
+    'https://docs.google.com/spreadsheets/d/1abc123def456ghi789jkl012mno345pqr678stu901/#gid=0',
+    'https://drive.google.com/file/d/1abc123def456ghi789jkl012mno345pqr678stu901/view',
+    '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME' // Raw ID
+];
+*/
+
+function extractSpreadsheetId(url) {
+    if (!url) return null;
+    
+    // Pattern 2 FIRST: Check for key parameter (before cleaning)
+    let match = url.match(/[?&]key=([a-zA-Z0-9-_]+)/);
+    if (match) return match[1];
+    
+    // NOW remove parameters and fragments for path-based extraction
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    
+    // Pattern 1: Standard share URL
+    match = cleanUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match) return match[1];
+    
+    // Pattern 3: Direct ID
+    if (/^[a-zA-Z0-9-_]{44}$/.test(cleanUrl)) {
+        return cleanUrl;
+    }
+    
+    // Pattern 4: New Google Sheets URL format
+    match = cleanUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (match) return match[1];
+    
+    // Pattern 5: Google Drive URL
+    match = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+    if (match) return match[1];
+    
+    return null;
+}
+
+
 
 //-------------------- end of settings ----------------------------------
 
 // ------------Google Sheets writing and reading functions -----------------
 function getSpreadSheetId(){
-    //const spreadSheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
-    const spreadSheetId = currentSettings.getSpreadSheetId();
-    return spreadSheetId;
+    return currentSettings.getSpreadSheetId();
+}
+function getDeviceId(){
+    return currentSettings.getDeviceId();
 }
 
 // Write data using JSONP
 async function appendGoogleSheet(sheetName, transactions) {
     const spreadSheetId = getSpreadSheetId();
+    const deviceId = getDeviceId();
+    // prepend device id on all the transactions
+    transactions.forEach(transaction =>{
+        transaction.unshift(deviceId);
+    })
+    console.log("=======transactions=======: ", transactions);
     try {
         //console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
         const gmtDate = Date();
@@ -974,7 +1042,8 @@ async function appendGoogleSheet(sheetName, transactions) {
 }
 //Read data using JSONP
 async function readGoogleSheet(sheetName) {
-    const spreadSheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+    //const spreadSheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+    const spreadSheetId = getSpreadSheetId();
     //console.log("Initiating readGoogleSheet read request...");
     try {
         //console.log('Starting readGoogleSheet read request...');

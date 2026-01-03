@@ -28,6 +28,7 @@
             <button id="upload-sales" class="controlButton">Upload</button>
             <button id="download-stock" class="controlButton">Download</button>
         </div>
+        <div id="message">This is the message line.</div>
     </div>
     <div id="code-entry-container">
         <div class="code-wrapper">
@@ -52,7 +53,6 @@
         </div>
     </div>
     <div id="details-display">
-        <div id="message">This is the message line.</div>
         <div class="numeric-input-container">
             <div class="numeric-input-label">Quantity:</div> 
             <div class="numberic-input-wrapper">
@@ -153,13 +153,23 @@
 
     <div id="settings-display">
         <h1>Settings</h1>
-        <!-- name - Single line text input with clear and copy buttons -->
+        <!-- Spreadsheet URL - Single line text input -->
         <div class="text-input-container">
-            <label for="settingsSpreadSheetIdInput">Name:</label>
+            <label for="settingsSpreadSheetUrlInput">Spreadsheet URL:</label>
             <div class="input-wrapper">
-                <input type="text" class="text-input" id="settingsSpreadSheetIdInput" placeholder="SpreadSheetId" data-clearable="">
+                <input type="text" class="text-input" id="settingsSpreadSheetUrlInput" placeholder="SpreadSheetUrl" data-clearable="">
                 <div class="settings-controls">
-                    <button id="settingsAddSpreadSheetId" class="settings-btn" title="Update">Update SpreadSheet Id</button>
+                    <button id="settingsAddSpreadSheetUrl" class="settings-btn" title="Update">Update SpreadSheet Url</button>
+                </div>
+            </div>
+        </div>
+        <!-- Device Id - Single line text input -->
+        <div class="text-input-container">
+            <label for="settingsDeviceIdInput">Spreadsheet URL:</label>
+            <div class="input-wrapper">
+                <input type="text" class="text-input" id="settingsDeviceIdInput" placeholder="DeviceId" data-clearable="">
+                <div class="settings-controls">
+                    <button id="settingsAddDeviceId" class="settings-btn" title="Update">Update Device Id</button>
                 </div>
             </div>
         </div>
