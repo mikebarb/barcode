@@ -1,5 +1,5 @@
 // Add version parameter to force update
-let APP_VERSION = '1.3'; // Default Fall back value
+let APP_VERSION = '1.4'; // Default Fall back value
 
 // Get version from query string or message
 const urlParams = new URL(self.location.href).searchParams;
