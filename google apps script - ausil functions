@@ -1,0 +1,306 @@
+//=======================================================//
+// Scripts attachd to the spreadsheet                    //
+// Accessed via the "MyTools -> Summarise Consignments". //
+//=======================================================//
+
+// Google Apps Script Code
+// At the TOP of your script, define your spreadsheet ID
+const SPREADSHEET_ID = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME'; // Your actual ID here
+// FIXED: Use explicit spreadsheet ID
+//const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+//const sheet = spreadsheet.getSheetByName('Transactions');
+const headerNames = ["device id", "date - time", "sale type", "email", "name", "comment","ausid barcode", "quantity", "unit cost", "sub-total", "consignment", "description"];
+const headerNamesSummary = ["device id", "date - time", "sale type", "email", "name", "comment","ausid barcode", "quantity", "unit cost", "sub-total", "consignment", "description"];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🚀 My Tools')
+    .addItem('Summarise Consignments', 'processData')
+    .addToUi();
+}
+
+function processData(){
+  //const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  //const sheet = spreadsheet.getSheetByName("transactions");
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName("transactions");
+  const sheetData = sheet.getDataRange().getValues();
+
+  // Need some ancilary data from the stock/taken list.
+  const sheetTaken = spreadsheet.getSheetByName("taken");
+  const sheetTakenData = sheetTaken.getDataRange().getValues();
+  var takenConsignment = {};
+  var takenDescription = {};
+  sheetTakenData.forEach(entry =>{
+    takenConsignment[entry[0]] = entry[3];
+    takenDescription[entry[0]] = entry[1];
+  });
+
+  // Remove header
+  sheetData.shift();                  // remove title row
+
+  // Add ancillary data to each row for use in this function.
+  sheetData.forEach(entry =>{
+    var entryCode = entry[6];      // Ausil barcode
+    entry[10]  = takenConsignment[entryCode] || "unknown";       // entryConsignment
+    entry[11] = takenDescription[entryCode] || "";             // entryDescription
+    // also add the sub-total for this line item
+    var entryQuantity = entry[7];
+    var entryCost = entry[8];
+    var subTotal = entryQuantity * entryCost;
+    entry[9] = subTotal;
+  });
+
+  // step through each transaction
+  // Let's find all the categories from the sheet 
+  //  processCategories = ["ministry", "cash", ...]
+  // and the category - consignment pairs or tuplets 
+  //   processCategoryConsignment = {"cash"=>["con 1","con 2"], ... }
+  var processCategories = [];
+  var processCategoryConsignment = {};
+  sheetData.forEach(item =>{
+    var itemCode = item[5];
+    if (itemCode != "Discount") {   // Discounts are a special case! always!
+      var itemCategory = item[2];
+      var itemConsignment = item[10];
+      if (!processCategories.includes(itemCategory)) {
+        processCategories.push(itemCategory);
+        processCategoryConsignment[itemCategory] = [itemConsignment];
+      }else{
+        if(!processCategoryConsignment[itemCategory].includes(itemConsignment)){
+          processCategoryConsignment[itemCategory].push(itemConsignment);
+        }
+      }
+    }
+  });
+  console.log("processCategories",processCategories);
+  console.log("processCategoryConsignment", processCategoryConsignment);
+
+  // Preferrd order to display the processCategories in the final sheets to be used in the office
+  var processCategoryDesiredOrder = ["cash", "eftpos", "etransfer", "account", "ministry", "pr", "stolen" ];
+  var processCategoryOrdered = [];
+  processCategoryDesiredOrder.forEach(item => {
+    if (processCategories.includes(item) ){
+      processCategoryOrdered.push(item);
+    }
+  });
+  console.log("processCategoryOrdered: ", processCategoryOrdered);
+  
+  // IN the Ausil office, PR and Ministy generate one invoice sheet each.
+  // All the other categories are invoice by consignment within each category.
+  
+  // Diagnostics Only - copy of transaction sheet with consignment and description acded.
+  // Delete old sheet and create a new one with headers.
+  var sheetName1 = "transactions_detail";
+  var detailTransactionSheet = openSheet(spreadsheet, sheetName1, headerNames)
+  sheetData.forEach(entry =>{
+      detailTransactionSheet.appendRow(entry);
+  });
+  // Underline this last row.
+  underlineLastRow(detailTransactionSheet);
+  formatSheet(detailTransactionSheet);
+  
+  // Now for the real processing - generating new sheets to match
+  /*
+  processCategories.forEach(processCategory => {
+    var sheetName = "";
+    if(processCategory == "ministry" || processCategory == "pr"){
+      // just process this category without taking notice of consignments.
+      sheetName = processCategory;
+      var thisSheet = openSheet(spreadsheet, sheetName, headerNames);
+      var summaryInfo = processSheet(thisSheet, processCategory, "ANY", sheetData, detailSheet);
+      underlineLastRow(thisSheet);
+      // Attach summary details - the critical bit.
+      writeSummaryDetails(thisSheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+      formatSheet(thisSheet);
+      formatSheet(detailSheet);
+    }else{
+      // need to separate out consignments
+      processCategoryConsignment[processCategory].forEach(thisConsignment=>{
+        sheetName = processCategory + "_" + thisConsignment;
+        var thisSheet = openSheet(spreadsheet, sheetName, headerNames);
+        var summaryInfo = processSheet(thisSheet, processCategory, thisConsignment, sheetData, detailSheet);
+        underlineLastRow(thisSheet);
+        // Attach summary details - the critical bit.
+        writeSummaryDetails(thisSheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+        formatSheet(thisSheet);
+        formatSheet(detailSheet);
+      });
+    }
+  });
+  */
+
+  // Different presentation
+  // Will generate three sheets: combination, summary, detail
+  // combination will provide both detail and summary info - each in processCategoryOrder/consignment sequence.
+  // detail will only provide transactions for each of these groups
+  // summary will only provide summaries for these groups.
+  var summarySheet = openSheet(spreadsheet, "summary", headerNamesSummary);
+  var detailSheet = openSheet(spreadsheet, "detail", headerNames);
+  var combinedSheet = openSheet(spreadsheet, "combined", headerNames);
+  processCategories.forEach(processCategory => {
+    if(processCategory == "ministry" || processCategory == "pr"){
+      // just process this category without taking notice of consignments.
+      //sectionTitle = processCategory;
+      sectionRow(detailSheet, processCategory, "");
+      sectionRow(combinedSheet, processCategory, "");
+      sectionRow(summarySheet, processCategory, "");
+      var summaryInfo = processSheet(detailSheet, processCategory, "ANY", sheetData, combinedSheet);
+      // Attach summary details - the critical bit.
+      writeSummaryDetails(summarySheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+      writeSummaryDetails(combinedSheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+      //formatSheet(detailSheet);
+      //formatSheet(summarySheet);
+      //formatSheet(combinedSheet);
+    }else{
+      // need to separate out consignments
+      processCategoryConsignment[processCategory].forEach(thisConsignment=>{
+        //sectionTitle = processCategory + "_" + thisConsignment;
+        sectionRow(detailSheet, processCategory, thisConsignment);
+        sectionRow(combinedSheet, processCategory, thisConsignment);
+        sectionRow(summarySheet, processCategory, thisConsignment);
+        var summaryInfo = processSheet(detailSheet, processCategory, thisConsignment, sheetData, combinedSheet);
+        // Attach summary details - the critical bit.
+        writeSummaryDetails(summarySheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+        underlineLastRow(combinedSheet);
+        writeSummaryDetails(combinedSheet, summaryInfo["total"], summaryInfo["items"], summaryInfo["itemsValue"], takenConsignment, takenDescription);
+        //formatSheet(detailSheet);
+        //formatSheet(summarySheet);
+        //formatSheet(combinedSheet);
+      });
+    }
+  });
+  formatSheet(detailSheet);
+  formatSheet(summarySheet);
+  formatSheet(combinedSheet);
+}
+
+
+function processSheet(processingSheet, processCategory, processConsignment, sheetData, detailSheet){
+  //console.log("====================================================");
+  //console.log("processCategory: " + processCategory + " processConsignment: " + processConsignment);
+  //console.log("====================================================");      
+  var total = 0;                   // total money value of all items shown in this category
+  var items = {};                  // quanity of each coded item in this category/consignment
+  var itemsValue = {};             // item unit cost for each coded item in this category/consighment
+  sheetData.forEach(entry =>{
+    //console.log("entry: ", entry);
+    var entryCode = entry[6];
+    var entryConsignment = entry[10];
+    var entryCategory = entry[2];
+    var flagMatchConsignment = false;
+    var flagMatchCategory = false;
+    (entryCategory == processCategory) ? flagMatchCategory = true : false;
+    ((entryConsignment && (entryConsignment == processConsignment)) || (processConsignment == "")) ? flagMatchConsignment = true : false;
+    if (processConsignment == "ANY") flagMatchConsignment = true;
+    //console.log("***itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
+    //console.log("flagMatchCategory: " + flagMatchCategory + " flagMatchConsignment: " + flagMatchConsignment);
+    if(flagMatchCategory && flagMatchConsignment){
+      //console.log("###itemCategory: " + entryCategory + " itemConsignment: " + entryConsignment);
+      detailSheet.appendRow(entry);      
+      //console.log (processCategory, entry);
+      var itemCode = entry[6];
+      var itemQuantity = entry[7];
+      var itemUnitCost = entry[8];
+      var itemSubTotal = itemQuantity * itemUnitCost;
+      // This itemUnitCost calculation is meaningless for discounts
+      // However, we will deal with them separately in outputing results.
+      if (items[itemCode]){
+        items[itemCode] += itemQuantity;
+        itemsValue[itemCode] = itemUnitCost;
+      }else{
+        items[itemCode] = itemQuantity;
+        itemsValue[itemCode] = itemUnitCost;
+      }
+      processingSheet.appendRow(entry);
+      total = total + itemSubTotal;
+    }
+  });
+
+  return {
+      "total": total,
+      "items": items,
+      "itemsValue": itemsValue
+  }
+}
+
+function writeSummaryDetails(sheet, total, items, itemsValue, takenConsignment, takenDescription){
+  for (const [key, value] of Object.entries(items).sort()) {
+    // key = code, value = quantity of this item sold
+    var itemTotal = value * itemsValue[key];
+    if (key == "Discount"){
+    sheet.appendRow(["", "", "", "", "", "", key, value, "", "", takenConsignment[key], takenDescription[key]]);
+    }else{
+    sheet.appendRow(["", "", "", "", "", "", key, value, itemsValue[key], itemTotal, takenConsignment[key], takenDescription[key]]);  
+    }
+  }
+  writeTotalRow(sheet, total);
+  //sheet.appendRow(["", "", "", "", "", "", "TOTAL", "", "", total]);
+}
+
+function writeTotalRow(sheet, total){
+  sheet.appendRow(["", "", "", "", "", "", "TOTAL", "", "", total]);
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+  var lastRowRange = sheet.getRange(lastRow, 1, 1, lastColumn);
+    // Add border (underline)
+    lastRowRange.setBorder(true, true, true, true, null, null, 'cyan', SpreadsheetApp.BorderStyle.SOLID);
+    lastRowRange.setBackground("cyan");
+
+}
+
+
+function sectionRow(sheet, processCategory, thisConsignment){
+  var sectionNames = ["", "", processCategory, "", "", "","", "", "", thisConsignment, ""];
+  sheet.appendRow(sectionNames);
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+  var lastRowRange = sheet.getRange(lastRow, 1, 1, lastColumn);
+    // Add border (underline)
+    lastRowRange.setBorder(true, true, true, true, null, null, 'black', SpreadsheetApp.BorderStyle.SOLID);
+    lastRowRange.setBackground("yellow");
+
+}
+
+function openSheet(spreadsheet, sheetName, headerName){
+// Delete old sheet and create a new one with headers.
+  var thisSheet = spreadsheet.getSheetByName(sheetName);
+  if (thisSheet){
+    spreadsheet.deleteSheet(thisSheet);
+  }
+  thisSheet = spreadsheet.insertSheet(sheetName);
+  thisSheet.appendRow(headerName);    // add a header
+  return thisSheet;
+}
+
+function underlineLastRow(sheet){
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+  if (lastRow > 0 && lastColumn > 0) {
+    var lastRowRange = sheet.getRange(lastRow, 1, 1, lastColumn);
+    // Add bottom border (underline)
+    lastRowRange.setBorder(null, null, true, null, null, null, 'black', SpreadsheetApp.BorderStyle.SOLID);
+  }
+}
+
+
+function formatSheet(sheet){
+  sheet.getRange('I:J').setNumberFormat('$#,##0.00');
+  sheet.getRange('H:H').setHorizontalAlignment('center');
+  sheet.getRange('K:K').setHorizontalAlignment('center');
+  // Underline first row.
+  var lastColumn = sheet.getLastColumn();
+  if (lastColumn > 0) {
+    var firstRowRange = sheet.getRange(1, 1, 1, lastColumn);
+    // Add bottom border (underline)
+    firstRowRange.setBorder(null, null, true, null, null, null, 'black', SpreadsheetApp.BorderStyle.SOLID);
+    firstRowRange.setFontWeight('bold');
+    for (var i = 1; i <= lastColumn; i++) {
+      sheet.autoResizeColumn(i);
+    }
+  }
+}
+
+
+
+
