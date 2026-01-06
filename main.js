@@ -71,7 +71,7 @@ import {ItemSearch} from './search.js';
 
 
 // Construct Service Worker URL with version parameter
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.5";
 const APP_URL = './sw.js?v=' + APP_VERSION;
 
 // Service Worker Registration
