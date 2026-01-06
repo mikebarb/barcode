@@ -895,13 +895,13 @@ export class Settings {
         this.storeSettings = new localStorageManager("settings");
         //this.storeSettings.clearTransactions();    //DIAGNOSTIC ONLY
         this.currentSettings = this.storeSettings.getObject() || {};
-        if(!("spreadsheetid" in this.currentSettings)){   // need default value if not already set.
-            this.currentSettings.spreadsheetid = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
+        if(!("spreadsheetId" in this.currentSettings)){   // need default value if not already set.
+            this.currentSettings.spreadsheetId = '1CbLT8fYvRl_avdpGiSXzTKyaEuSgV55f4ZXCTJv-aME';
             this.storeSettings.setObject(this.currentSettings);
         }
         console.log("currentSettings", this.currentSettings);
-        if(!("deviceid" in this.currentSettings)){   // need default value if not already set.
-            this.currentSettings.deviceid = 'Not_Set';
+        if(!("deviceId" in this.currentSettings)){   // need default value if not already set.
+            this.currentSettings.deviceId = 'Not_Set';
             this.storeSettings.setObject(this.currentSettings);
         }
     }
@@ -915,14 +915,14 @@ export class Settings {
         return this.currentSettings.spreadsheetUrl;
     }
     getSpreadSheetId(){
-        return this.currentSettings.spreadsheetid;
+        return this.currentSettings.spreadsheetId;
     }
     setDeviceId(deviceId){
-        this.currentSettings.deviceid = deviceId;
+        this.currentSettings.deviceId = deviceId;
         this.storeSettings.setObject(this.currentSettings);
     }
     getDeviceId(){
-        return this.currentSettings.deviceid;
+        return this.currentSettings.deviceId;
     }
 }
 

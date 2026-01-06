@@ -17,3 +17,6 @@ localhost-key.pem
 localhost.pem
 mkcert.exe
 localhost*
+sw_version.json
+sw_new.js
+main_updateManager.js
