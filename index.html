@@ -173,6 +173,19 @@
                 </div>
             </div>
         </div>
+        <!-- Manual control of PWA refresh -->
+        <div style="position: fixed; bottom: 10px; right: 10px; z-index: 1000;">
+             <span class="version-display" data-connectivity-version>
+                v-unknown
+            </span>
+            <button onclick="window.updateManager.manualUpdateCheck()" class="update-check-btn">
+                Check for Updates
+            </button>
+            <span class="status-display status-online" data-connectivity-status>
+                Unknown
+            </span>
+        </div>
+
     </div>
     <!-- Load QuaggaJS from a CDN 
     <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>

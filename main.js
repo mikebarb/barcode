@@ -1,138 +1,54 @@
-// Class for managing input fields with clear and fullscreen functionality
-// ???  Seems to be in the details-area - email, name and comments???
-class InputManager {
-    constructor() {
-        this.init();
-    }
-    init() {
-        this.setupEventDelegation();
-        this.initializeClearButtons();
-    }
-    setupEventDelegation() {
-        document.addEventListener('click', (e) => {
-            this.handleButtonClick(e);
-        });
-        document.addEventListener('input', (e) => {
-            if (e.target.matches('.text-input, textarea[data-clearable]')) {
-                this.handleInput(e.target);
-            }
-        });
-    }
-    handleButtonClick(e) {
-        const btn = e.target.closest('.control-btn');
-        if (!btn) return;
-
-        const inputWrapper = btn.closest('.input-wrapper, .textarea-wrapper');
-        const input = inputWrapper?.querySelector('.text-input, textarea');
-        console.log("Button clicked: ", btn, " for input: ", input);
-        if (btn.classList.contains('clear-btn')) {
-            this.clearInput(input);
-            if (btn.closest('.textarea-wrapper')) {
-                this.autoResizeTextarea(input);
-            }
-        }
-    }
-    handleInput(input) {
-        console.log(`${input.id} input:`, input.value);
-        this.toggleClearButton(input);
-        
-        if (input.id === 'customTextarea') {
-            this.autoResizeTextarea(input);
-        }
-    }
-    clearInput(input) {
-        if (!input) return;
-        input.value = '';
-        input.focus();
-        input.dispatchEvent(new Event('input'));
-    }
-    toggleClearButton(input) {
-        const clearBtn = input?.closest('.input-wrapper, .textarea-wrapper')
-                           ?.querySelector('.clear-btn');
-        if (clearBtn) {
-            clearBtn.style.visibility = input.value ? 'visible' : 'hidden';
-        }
-    }
-    initializeClearButtons() {
-        document.querySelectorAll('.text-input, textarea[data-clearable]').forEach(input => {
-            this.toggleClearButton(input);
-        });
-    }
-    autoResizeTextarea(textarea) {        
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
-    }
-}
+//-----------------------------------/
+// Main.js                           /
+//----------------------------------/
 
 // Importing classes from other modules
-import { GoogleSheetsJSONPClient } from './sheets-client.js';
+import {InputManager} from './inputManager.js';
+import {GoogleSheetsJSONPClient} from './sheets-client.js';
 import {localStorageManager} from './local-storage.js';
 import {ItemSearch} from './search.js';
+import {UpdateManager} from './updateManager.js';
 
 
 // Construct Service Worker URL with version parameter
-const APP_VERSION = "1.5";
-const APP_URL = './sw.js?v=' + APP_VERSION;
+// Version loading from central json - version.json
+let APP_URL;
+let APP_VERSION = "1.5";   //Hard fallback if fetch fails entirely
 
-// Service Worker Registration
-function registerServiceWorker() {
-    console.log('Registering Service Worker with URL:', APP_URL);
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          console.log('Active SW registrations:', registrations.length);
-          registrations.forEach(reg => {
-            console.log('SW scope:', reg.scope);
-            console.log('SW state:', reg.active?.state);
-          });
-        });
-        window.addEventListener('load', () => {
-            console.log("in window add load listener");
-            navigator.serviceWorker.register(APP_URL)
-                .then(registration => {
-                    console.log("registered", registration);
-                    // Send version to SW after registration
-                    if (registration.active) {
-                        registration.active.postMessage({
-                            type: 'SET_VERSION',
-                            version: APP_VERSION
-                        });
-                    }
-                    // Also send to waiting SW if any
-                    if (registration.waiting) {
-                        registration.waiting.postMessage({
-                            type: 'SET_VERSION', 
-                            version: APP_VERSION
-                        });
-                    }
-                    // Optional: Check for updates
-                    console.log('SW registered:', registration);
-                    registration.update();
-                })
-                .catch(registrationError => {
-                    console.log('SW registration failed: ', registrationError);
-                });
-        });
-    } else {
-        console.log('Service Workers are not supported in this browser.');
+async function fetchVersion() {
+    try {
+        const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
+        if (!response.ok) throw new Error('Version file not found');
+        const data = await response.json();
+        if (data.version !== undefined) {
+            APP_VERSION = data.version;
+            console.log('Loaded version from JSON:', APP_VERSION);
+        } else {
+            console.log('Version not in JSON - using fallback:', APP_VERSION);
+        }        
+        return APP_VERSION;
+    } catch (error) {
+        console.warn('Failed to load version.json - using fallback:', error);
+        return APP_VERSION;  // Stick with default
     }
 }
-
-// Initialize the service worker
- registerServiceWorker();
-
-// Initialize the text input manager
-const inputManager = new InputManager();
+fetchVersion
+// Expose APP_VERSION after fetch (for UpdateManager)
+window.getAppVersion = () => APP_VERSION;
 
 // Test deployment
 //const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
 const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
-const client = new GoogleSheetsJSONPClient(SCRIPT_URL);
-const storeScans = new localStorageManager('scans');
-const storeSales = new localStorageManager('sales');
+
+// Initialize class instances
+const inputManager = new InputManager();
+const client       = new GoogleSheetsJSONPClient(SCRIPT_URL);
+const storeSales   = new localStorageManager('sales');
+const storeStock   = new localStorageManager('stock');
 const storedLastUpdateTime = new localStorageManager('lastUpdateTime');
-const storeStock = new localStorageManager('stock');
+//const storeScans   = new localStorageManager('scans');
 
 // Export the function for module use
 // and also attach to window for legacy scripts
@@ -887,9 +803,6 @@ function addItemsDollarTotals(items) {
 
 // -------------------------  Settings  ----------------------------------
 // We want to store some user settings in local storage
-
-
-
 export class Settings {
     constructor() {
         this.storeSettings = new localStorageManager("settings");
@@ -1379,9 +1292,54 @@ export function optionsDisplay() {
     }
 }
 
-// Initialize UI
-updateUI();
+// ============================================================================
+// INTEGRATION UPDATE MANAGER WITH YOUR EXISTING APP
+// ============================================================================
+// Your existing initialization function - MODIFY IT LIKE THIS:
+async function initialiseApp() {
+    console.log('App: Initializing PWA...');
+    
+    // Fetch version early (non-blocking)
+    await fetchVersion();
+    APP_URL = `./sw.js?v=${APP_VERSION}`;
+    console.log('App URL with version:', APP_URL);
 
+
+    // YOUR EXISTING INITIALIZATION CODE HERE
+    // setupScanner();
+    // loadSettings();
+    // setupUIEventListeners();
+    // ... all your existing setup functions
+    
+    // ADD THIS LINE to initialize the UpdateManager
+    //window.updateManager = new UpdateManager();
+    const updateManager = new UpdateManager(APP_VERSION);
+    window.updateManager = updateManager;
+
+    // Initialize UI
+    updateUI();
+    
+    console.log('App: Initialization complete');
+}
+
+function updateUI() {
+    // Your UI logic: Update counts from localStorage, toggle sync panel if online
+    const status = window.updateManager ? window.updateManager.getStatus() : { isOnline: navigator.onLine };
+    document.getElementById('sync-panel') ? (document.getElementById('sync-panel').style.display = status.isOnline ? 'block' : 'none') : null;
+    
+    // Example: Scan count
+    //const scanCountEl = document.getElementById('scanCount');
+    //if (scanCountEl) scanCountEl.textContent = (storeScans.getItem('data') || []).length;
+    
+    console.log('UI updated - Online:', status.isOnline, 'Version:', APP_VERSION);
+}
+
+// Start your app when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialiseApp);
+} else {
+    initialiseApp();
+}
 
 
 

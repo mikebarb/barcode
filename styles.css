@@ -588,4 +588,69 @@ button:disabled {
     color: white;
     background-color: #007aff;
 }
+/*----------------------------------*/
+/* PWA - Service Worker Stuff       */
+/*----------------------------------*/
+/* Update Manager Styles */
+.status-online {
+    color: #4CAF50;
+    font-weight: bold;
+}
 
+.status-offline {
+    color: #F44336;
+    font-weight: bold;
+}
+
+#offline-indicator {
+    animation: pulse 2s infinite;
+}
+
+#update-indicator {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Manual update check button */
+.update-check-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 5px;
+    font-size: 14px;
+}
+
+.update-check-btn:hover {
+    background: #1976D2;
+}
+
+.update-check-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Status display element */
+.status-display {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    margin-left: 10px;
+}
