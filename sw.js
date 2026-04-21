@@ -34,7 +34,7 @@ const STATIC_CACHE_URLS = [
 ];
 
 
-let APP_VERSION = '1.5';
+let APP_VERSION = '1.1';
 
 // Get version from URL or use default
 const urlParams = new URL(self.location.href).searchParams;

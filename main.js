@@ -13,7 +13,7 @@ import {UpdateManager} from './updateManager.js';
 // Construct Service Worker URL with version parameter
 // Version loading from central json - version.json
 let APP_URL;
-let APP_VERSION = "1.5";   //Hard fallback if fetch fails entirely
+let APP_VERSION = "1.1";   //Hard fallback if fetch fails entirely
 
 async function fetchVersion() {
     try {
@@ -494,6 +494,11 @@ function formatGmtDateTimeNumber(date) {
 //----add button event listener for sales upload to google sheets and associated functions ---------------------
 document.getElementById("upload-sales").addEventListener('click', (e) => {
     //console.log("event on upload sales", e);
+    // if phone is offline, abort
+    if (!updateManager.getStatus().isOnline) {
+        console.log("Device is offline. Cannot upload sales.");
+        return;
+    }
     let nowGmtDateTime = [];
     if (storedLastUpdateTime.getTransactions().length != 0) {
         nowGmtDateTime = storedLastUpdateTime.getTransactions()[0][0];
@@ -535,10 +540,26 @@ document.getElementById("upload-sales").addEventListener('click', (e) => {
 //----add button event listener to download stock info from google sheets and associated functions ---------------------
 document.getElementById("download-stock").addEventListener('click', (e) => {
     console.log("event to download stock", e);
+    // if phone is offline, abort
+    if (!updateManager.getStatus().isOnline) {
+        console.log("Device is offline. Cannot download-stock.");
+        return;
+    }
     const stockStored = storeStock.getTransactions();
     console.log("stock stored: ", stockStored);
     let stockInfo = readGoogleSheet("Stock");
 });
+
+// Hide upload and download buttons - used when offline.
+export function hideUploadDownload(){
+    document.getElementById("upload-sales").style.backgroundColor = "rgb(200, 200, 200";
+    document.getElementById("download-stock").style.backgroundColor = "rgb(200, 200, 200)";
+}   
+// Show upload and download buttons - used when online.
+export function showUploadDownload(){
+    document.getElementById("upload-sales").style.backgroundColor = "rgb(0, 122, 255)";
+    document.getElementById("download-stock").style.backgroundColor = "rgb(0, 122, 255)";
+}
 
 // Initialize the search manager for searching against stock data
 const searchManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
@@ -1317,21 +1338,21 @@ async function initialiseApp() {
     window.updateManager = updateManager;
 
     // Initialize UI
-    updateUI();
+    //?? updateUI();
     
     console.log('App: Initialization complete');
 }
 
 function updateUI() {
     // Your UI logic: Update counts from localStorage, toggle sync panel if online
-    const status = window.updateManager ? window.updateManager.getStatus() : { isOnline: navigator.onLine };
-    document.getElementById('sync-panel') ? (document.getElementById('sync-panel').style.display = status.isOnline ? 'block' : 'none') : null;
+    //?? const status = window.updateManager ? window.updateManager.getStatus() : { isOnline: navigator.onLine };
+    //?? document.getElementById('sync-panel') ? (document.getElementById('sync-panel').style.display = status.isOnline ? 'block' : 'none') : null;
     
     // Example: Scan count
     //const scanCountEl = document.getElementById('scanCount');
     //if (scanCountEl) scanCountEl.textContent = (storeScans.getItem('data') || []).length;
     
-    console.log('UI updated - Online:', status.isOnline, 'Version:', APP_VERSION);
+    //?? console.log('UI updated - Online:', status.isOnline, 'Version:', APP_VERSION);
 }
 
 // Start your app when DOM is ready

@@ -2,6 +2,9 @@
 // UPDATE MANAGER & SERVICE WORKER INTEGRATION
 // ============================================================================
 // Export for manual access if needed
+
+import { hideUploadDownload, showUploadDownload } from "./main.js";
+
 //window.UpdateManager = UpdateManager;
 export class UpdateManager {
     constructor(version = APP_VERSION) {
@@ -23,30 +26,67 @@ export class UpdateManager {
         // Do not want this for this application
         //this.setupOfflineUI();
 
-        this.updateConnectivityUI(this.isOnline); // initialise connectivity status in UI
-        this.updateConnectivityVersion(this.currentVersion); // initialise version in UI
-        
-        this.setupEventListeners();
-        
-        // Register with retry logic for stability
-        let retryCount = 0;
-        while (retryCount < this.maxRetries) {
-            try {
-                await this.registerServiceWorker();
-                break;  // Success - exit retry
-            } catch (error) {
-                retryCount++;
-                console.warn(`UpdateManager: Registration attempt ${retryCount} failed:`, error);
-                if (retryCount < this.maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, this.retryDelay * retryCount));  // Exponential backoff
-                } else {
-                    this.showToast('PWA setup incomplete - app still works but offline features limited.', 'error', 5000);
+        //this.updateConnectivityUI(this.isOnline); // initialise connectivity status in UI
+        this.updateConnectivityVersion(this.currentVersion); // initialise version in UI        
+        await this.setupEventListeners();
+        await this.verifyConnectivityStatus(); // Check initial connectivity and update UI
+
+        // Only try to register if online
+        console.log('UpdateManager: Initial connectivity status:', this.isOnline);
+        if(this.isOnline) {
+            console.log('UpdateManager: Online - attempting Service Worker registration');
+            // Register with retry logic for stability
+            let retryCount = 0;
+            while (retryCount < this.maxRetries) {
+                try {
+                    await this.registerServiceWorker();
+                    break;  // Success - exit retry
+                } catch (error) {
+                    retryCount++;
+                    console.warn(`UpdateManager: Registration attempt ${retryCount} failed:`, error);
+                    if (retryCount < this.maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, this.retryDelay * retryCount));  // Exponential backoff
+                    } else {
+                        this.showToast('PWA setup incomplete - app still works but offline features limited.', 'error', 5000);
+                    }
                 }
             }
+        } else {
+            console.log('UpdateManager: Offline - SW registration skipped. Cached version active.');
         }
-        
         console.log('UpdateManager: Initialization complete');
     }
+
+    async verifyConnectivityStatus() {
+        console.log('UpdateManager: Verifying connectivity status...');
+        console.log('navigator.onLine:', navigator.onLine);
+        try {
+            // Lightweight fetch to test connectivity
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+            console.log('UpdateManager: Starting fetch...');
+            const response = await fetch('/version.json', {
+                cache: 'no-cache',
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            console.log('UpdateManager: Fetch succeeded, status:', response.status);
+            console.log('UpdateManager: Response URL:', response.url);  // Check if from cache
+            if (response.ok) {
+                console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - online');
+                this.handleOnline();
+            } else {
+                console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - offline');
+                this.handleOffline();
+            }
+        } catch (error) {
+            // Network failed - definitely offline
+            console.log('UpdateManager: Fetch failed:', error.name, error.message);
+            this.handleOffline();
+        }
+    }
+
 
     updateManager
     
@@ -209,7 +249,8 @@ export class UpdateManager {
     setupEventListeners() {
         // Network status monitoring
         window.addEventListener('online', () => {
-            this.handleOnline();
+            //this.handleOnline();
+            this.verifyConnectivityStatus(); // Re-verify connectivity to the server
         });
         
         window.addEventListener('offline', () => {
@@ -250,7 +291,9 @@ export class UpdateManager {
                 isOnline: false
             });
         }
+
     }
+
 /*    
     setupPeriodicUpdateChecks() {
         // Check every 30 minutes when online
@@ -337,6 +380,9 @@ export class UpdateManager {
             element.textContent = online ? 'Online' : 'Offline';
             element.className = online ? 'status-online' : 'status-offline';
         });
+
+        // Show or hide upload and download buttons based on online status
+        online ? showUploadDownload() : hideUploadDownload();
         
         // Update title or other UI elements as needed
         const title = document.querySelector('title');
