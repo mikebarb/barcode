@@ -22,6 +22,7 @@
                     <div class="dropdownOption" data-value="showPurchases">Purchases</div>
                     <div class="dropdownOption" data-value="showSold">Sold</div>
                     <div class="dropdownOption" data-value="showScan">Scan</div>
+                    <div class="dropdownOption" data-value="showCheckout">Checkout</div>
                     <div class="dropdownOption" data-value="showSettings">Settings</div>
                 </div>
             </div>
@@ -61,6 +62,7 @@
                 <button class="numeric-increment">+</button>
             </div>
             <button id="add-item-button">Add</button>
+            <button id="save-checkout" class="generic-button">Save</button>
         </div>
         <div id="sale-total">
             <button id="show-discount" class="generic-button">Discount</button>
@@ -74,10 +76,25 @@
             <button id = "discount-add">Add</button>
             <button id = "discount-cancel">exit</button>
         </div>
-            <div id="items-to-purchase" class="products-list">
+        <div id="items-to-purchase" class="products-list">
         </div>
-        <!-- type of sale - drop down list -->
-        <div class="customDropdown">
+        <div id="checkout-common-info">
+             <!-- name - Single line text input with clear and copy buttons -->
+            <div class="consignment-input-container">
+                <label for="consignmentTextInput">Consignment:</label>
+                <div class="input-wrapper">
+                    <input type="text" class="text-input" id="consignmentTextInput" placeholder="Enter your consignment id" data-clearable="">
+                    <div class="input-controls">
+                        <button class="control-btn clear-btn" title="Clear">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="items-to-checkout" class="products-list">
+        </div>
+        <div id="purchase-common-info">
+            <!-- type of sale - drop down list -->
+            <div class="customDropdown">
                 <div class="dropdownSelected" id="dropdownSaleType">
                     Select option.
                 </div>
@@ -89,43 +106,43 @@
                     <div class="dropdownOption" data-value="pr">PR</div>
                     <div class="dropdownOption" data-value="account">Account</div>
                 </div>
-        </div>
+            </div>
 
-        <!-- email - Single line text input with clear and copy buttons -->
-        <div class="text-input-container" data-type="single">
-            <label for="emailTextInput">eMail:</label>
-            <div class="input-wrapper">
-                <input type="email" class="text-input" id="emailTextInput" placeholder="Enter email address" data-clearable>
-                <div class="input-controls">
-                    <button class="control-btn clear-btn" title="Clear">×</button>
+            <!-- email - Single line text input with clear and copy buttons -->
+            <div class="text-input-container" data-type="single">
+                <label for="emailTextInput">eMail:</label>
+                <div class="input-wrapper">
+                    <input type="email" class="text-input" id="emailTextInput" placeholder="Enter email address" data-clearable>
+                    <div class="input-controls">
+                        <button class="control-btn clear-btn" title="Clear">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- name - Single line text input with clear and copy buttons -->
+            <div class="text-input-container">
+                <label for="nameTextInput">Name:</label>
+                <div class="input-wrapper">
+                    <input type="text" class="text-input" id="nameTextInput" placeholder="Enter your name" data-clearable="">
+                    <div class="input-controls">
+                        <button class="control-btn clear-btn" title="Clear">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multi-line textarea with clear and expand buttons -->
+            <div class="text-input-container">
+                <label for="commentTextarea">Comment:</label>
+                <div class="textarea-wrapper">
+                    <textarea id="commentTextarea" class="multiline-text-input" rows="2" data-clearable data-expandable
+                              placeholder="Enter comments here" 
+                              style="resize: vertical;"></textarea>
+                    <div class="input-controls">
+                        <button class="control-btn clear-btn" title="Clear">×</button>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- name - Single line text input with clear and copy buttons -->
-        <div class="text-input-container">
-            <label for="nameTextInput">Name:</label>
-            <div class="input-wrapper">
-                <input type="text" class="text-input" id="nameTextInput" placeholder="Enter your name" data-clearable="">
-                <div class="input-controls">
-                    <button class="control-btn clear-btn" title="Clear">×</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Multi-line textarea with clear and expand buttons -->
-        <div class="text-input-container">
-            <label for="commentTextarea">Comment:</label>
-            <div class="textarea-wrapper">
-                <textarea id="commentTextarea" class="multiline-text-input" rows="2" data-clearable data-expandable
-                        placeholder="Enter comments here" 
-                        style="resize: vertical;"></textarea>
-                <div class="input-controls">
-                    <button class="control-btn clear-btn" title="Clear">×</button>
-                </div>
-            </div>
-        </div>
-
     </div>
     <div id="scan-display">
         <p>Barcode Scanner using QuaggaJS</p>

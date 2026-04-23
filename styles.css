@@ -361,6 +361,15 @@ button:disabled {
   font-size: 14px;
 }
 
+.item-header .consignment {
+  width: 20%; /* Flexible width for consignment */
+  min-width: 100px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .item-header .code {
   width: 35%; /* Flexible width for code */
   min-width: 100px;

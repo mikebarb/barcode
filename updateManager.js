@@ -1,15 +1,16 @@
 // ============================================================================
 // UPDATE MANAGER & SERVICE WORKER INTEGRATION
 // ============================================================================
-// Export for manual access if needed
+// Export for manual access if needed 
 
 import { hideUploadDownload, showUploadDownload } from "./main.js";
 
 //window.UpdateManager = UpdateManager;
 export class UpdateManager {
-    constructor(version = APP_VERSION) {
+    constructor(version = APP_VERSION, online = false) {
         this.currentVersion = version;   // Use passed or global
-        this.isOnline = navigator.onLine;
+        //this.isOnline = navigator.onLine;
+        this.isOnline = online;         // Use passed or global
         this.maxRetries = 3;
         this.retryDelay = 2000;
         this.readyTimeout = 10000; // 10 seconds
@@ -53,9 +54,45 @@ export class UpdateManager {
             }
         } else {
             console.log('UpdateManager: Offline - SW registration skipped. Cached version active.');
+            console.log('ABOUT TO ENTER TRY BLOCK');
+            
+            // Check if Service Worker API exists
+            if (!('serviceWorker' in navigator)) {
+                console.log('Update Manager: Service Workers not supported - skipping version retrieval');
+                //return null;
+            }else{
+                try {
+                    // Get info about cached SW
+                    const cachedVersion = await this.getCachedSWVersion();
+                    console.log('Cached SW Version:', cachedVersion);
+                    this.version = cachedVersion || this.currentVersion; // Use cached version if available
+                    this.updateConnectivityVersion(this.version); // Update version in UI
+                } catch (error) {
+                    console.log('UpdateManager: Failed to get cached SW version:', error);
+                }
+            }
         }
         console.log('UpdateManager: Initialization complete');
     }
+
+    async getCachedSWVersion() {
+        console.log('UpdateManager: Checking for cached Service Worker version...');
+        const registration = await navigator.serviceWorker.getRegistration();
+        console.log('Service Worker registration:', registration);
+        if (registration && registration.active) {
+            const scriptURL = registration.active.scriptURL;
+            console.log('Cached SW URL:', scriptURL);
+            
+            // Extract version from URL if you use ?v=X.X pattern
+            const url = new URL(scriptURL);
+            const version = url.searchParams.get('v');
+            
+            return version || 'unknown';
+        }
+        
+        return null;
+    }
+
 
     async verifyConnectivityStatus() {
         console.log('UpdateManager: Verifying connectivity status...');
@@ -86,9 +123,6 @@ export class UpdateManager {
             this.handleOffline();
         }
     }
-
-
-    updateManager
     
     async registerServiceWorker() {
         // Check browser support
@@ -366,7 +400,7 @@ export class UpdateManager {
         const indicator = document.getElementById('offline-indicator');
         if (indicator) {
             indicator.style.display = online ? 'none' : 'block';
-            this.updateConnectivityUI(online);
+            //this.updateConnectivityUI(online);
         }
         
         // Update any existing connectivity UI elements

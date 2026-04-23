@@ -10,31 +10,6 @@ import {ItemSearch} from './search.js';
 import {UpdateManager} from './updateManager.js';
 
 
-// Construct Service Worker URL with version parameter
-// Version loading from central json - version.json
-let APP_URL;
-let APP_VERSION = "1.1";   //Hard fallback if fetch fails entirely
-
-async function fetchVersion() {
-    try {
-        const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
-        if (!response.ok) throw new Error('Version file not found');
-        const data = await response.json();
-        if (data.version !== undefined) {
-            APP_VERSION = data.version;
-            console.log('Loaded version from JSON:', APP_VERSION);
-        } else {
-            console.log('Version not in JSON - using fallback:', APP_VERSION);
-        }        
-        return APP_VERSION;
-    } catch (error) {
-        console.warn('Failed to load version.json - using fallback:', error);
-        return APP_VERSION;  // Stick with default
-    }
-}
-fetchVersion
-// Expose APP_VERSION after fetch (for UpdateManager)
-window.getAppVersion = () => APP_VERSION;
 
 // Test deployment
 //const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
@@ -43,10 +18,11 @@ window.getAppVersion = () => APP_VERSION;
 const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
 
 // Initialize class instances
-const inputManager = new InputManager();
-const client       = new GoogleSheetsJSONPClient(SCRIPT_URL);
-const storeSales   = new localStorageManager('sales');
-const storeStock   = new localStorageManager('stock');
+const inputManager  = new InputManager();
+const client        = new GoogleSheetsJSONPClient(SCRIPT_URL);
+const storeSales    = new localStorageManager('sales');
+const storeCheckout = new localStorageManager('checkout');
+const storeStock    = new localStorageManager('stock');
 const storedLastUpdateTime = new localStorageManager('lastUpdateTime');
 //const storeScans   = new localStorageManager('scans');
 
@@ -225,7 +201,7 @@ addItemButton.addEventListener('click', function() {
 });
 
 //--------- adds an ausil item to the list
-// calls on the addLineItem.
+// calls on the addLineItemSales or addLineItemCheckout.
 function addItem(){
     const code = document.getElementById("inputCode").value;
     console.log("code to check: ", code);
@@ -237,25 +213,75 @@ function addItem(){
     }
     const quantity = Number(document.getElementById("quantityNumbericInput").value);
     const price = Number(document.getElementById("details-cost").textContent);
-    //const price = Number("1.00");
-    
     if((code.length == 0) || (quantity == 0) ){
         console.log("cannot add empty code or 0 quantity");
         return;
     }
-    //const description = "This describes the item."
     const description = document.getElementById("details-description").textContent;
-    addLineItem(code, quantity, price, description);
-    // Now calculate th sales total
-    calculateSaleTotal();
+    if (getSelectedOption() === "showSales") {
+        addLineItemSales(code, quantity, price, description);
+        // Now calculate th sales total
+        calculateSaleTotal();
+    }else{
+        const consignment = document.getElementById("consignmentTextInput").value;
+        console.log("consignment: ", consignment);
+        addLineItemCheckout(consignment, code, quantity, price, description);
+    }
     // clear the details area for next item & ausid entry
     clearDetailsWrapper();
     document.getElementById("inputCode").value = '';
 }
 
+function addLineItemCheckout(consignment, code, quantity, price, description){  
+    console.log("addLineItemCheckout: ", consignment, code, quantity, price, description);
+    const eleProductList = document.getElementById("items-to-checkout"); 
+    const eleProductItem = document.createElement('div');     // product item
+    eleProductItem.classList.add("product-item");
+    //creat the two html lines for this item.
+    // create the first line for the item
+    const eleItemLine1 = document.createElement('div');      // item-header
+    eleItemLine1.classList.add("item-header");
+    // create each column in this line
+    const eleItemConsignment = document.createElement('span');      // code
+    eleItemConsignment.classList.add("consignment");
+    eleItemConsignment.textContent=consignment;
+    eleItemLine1.appendChild(eleItemConsignment);
+    const eleItemCode = document.createElement('span');      // code
+    eleItemCode.classList.add("code");
+    eleItemCode.textContent=code;
+    eleItemLine1.appendChild(eleItemCode);
+    const eleItemQty = document.createElement('span');       // quantity
+    eleItemQty.classList.add("quantity");
+    eleItemQty.textContent= quantity.toString();
+    eleItemLine1.appendChild(eleItemQty);
+    const eleItemPrice = document.createElement('span');    // price
+    eleItemPrice.classList.add("price");
+    console.log("price: ", price);
+    eleItemPrice.textContent = price.toFixed(2);
+    eleItemLine1.appendChild(eleItemPrice);
+    //const eleItemSubtotal = document.createElement('span');  // subtotal
+    //eleItemSubtotal.classList.add("subtotal");
+    //eleItemSubtotal.textContent = (price * quantity).toFixed(2);
+    //eleItemLine1.appendChild(eleItemSubtotal);
+    const eleDeleteBtn = document.createElement('button');    // delete button
+    eleDeleteBtn.classList.add("delete-btn");
+    eleDeleteBtn.title = "Delete Item";
+    eleDeleteBtn.textContent = "x";
+    eleItemLine1.appendChild(eleDeleteBtn);
+    eleProductItem.appendChild(eleItemLine1);
+    // create the second line (description) for the item
+    const eleItemLine2 = document.createElement('div');
+    eleItemLine2.classList.add("description");
+    eleItemLine2.textContent = description;
+    eleProductItem.appendChild(eleItemLine2);
+    // Now insert into the page / dom.
+    eleProductList.prepend(eleProductItem);
+}
+
+
 //--------- does the dom build for adding an item to the list.
 // used by mutiple functions (addItem, addDiscount) that append to this list.
-function addLineItem(code, quantity, price, description){    
+function addLineItemSales(code, quantity, price, description){    
     const eleProductList = document.getElementById("items-to-purchase"); 
     const eleProductItem = document.createElement('div');     // product item
     eleProductItem.classList.add("product-item");
@@ -316,7 +342,7 @@ function clearMessage(){
     eleMessage.textContent = "";
 }
 
-// Need code to act on this item's delete button being clicked.
+// Need code to act on this item's delete button being clicked in sales area.
 document.getElementById("items-to-purchase").addEventListener('click', (e) => {
     console.log("event on items-to-purchase", e);
     clearMessage();
@@ -332,6 +358,18 @@ document.getElementById("items-to-purchase").addEventListener('click', (e) => {
         }
     }
 });
+
+// Need code to act on this item's delete button being clicked in checkout area.
+document.getElementById("items-to-checkout").addEventListener('click', (e) => {
+    console.log("event on items-to-checkout", e);
+    clearMessage();
+    if (e.target.matches('.delete-btn')) {
+        e.target.closest('.product-item').remove();
+    }
+});
+
+
+
 // on initialisation, hide the sale total area 
 document.getElementById("sale-total").style.display = 'none';
 
@@ -374,7 +412,7 @@ document.getElementById("discount-add").addEventListener('click', (e) => {
     }
     //const discountValue = Number("1.00") * -1;
     console.log ("discount value: ", discountValue);
-    addLineItem("Discount", "1", discountValue, "");
+    addLineItemSales("Discount", "1", discountValue, "");
     calculateSaleTotal();
     // need to check if any items left
     const eleItemsToPurchase = document.getElementById("items-to-purchase");
@@ -389,7 +427,12 @@ document.getElementById("discount-add").addEventListener('click', (e) => {
 // Check if the Ausil barcode is already in the items list
 function checkCodePresent(checkCode){
     // check each code field to see if checkCode is already present
-    const eleItemsToPurchase = document.getElementById("items-to-purchase");
+    //const eleItemsToPurchase
+    let eleItemsToPurchase = document.getElementById("items-to-purchase");
+    if(getSelectedOption() === "showCheckout"){
+        console.log("check code in checkout list");
+        eleItemsToPurchase = document.getElementById("items-to-checkout");
+    }
     const eleItems = Array.from(eleItemsToPurchase.querySelectorAll('.code'));
     console.log("check code is present in list: ", eleItems);
     const isPresent = eleItems.some(item =>
@@ -417,6 +460,16 @@ function calculateSaleTotal(){
         document.getElementById("sale-total").style.display = 'none';
     }else{
         document.getElementById("sale-total").style.display = 'flex';
+        const selectedOption = getSelectedOption();
+        console.log("selectedOption: ", selectedOption);
+        if(selectedOption === "showCheckout") {
+            document.getElementById("sale-total").style.display = 'none';
+            //document.getElementById("show-discount").style.display = 'none';
+            //document.getElementById("finalise-purchase").style.display = 'none';
+        }else{
+            //document.getElementById("show-discount").style.display = 'inline-block';
+            //document.getElementById("finalise-purchase").style.display = 'inline-block';
+        }
     }
 }
 
@@ -464,6 +517,51 @@ document.getElementById("finalise-purchase").addEventListener('click', (e) => {
     document.getElementById("quantityNumbericInput").value = 1;
     setMessage("Purchase Completed.");
 })
+
+// code to act on the Check-out Save button
+document.getElementById("save-checkout").addEventListener('click', (e) => {
+    console.log("event on saving checkout items", e);
+    // build the array 
+    //[consignment,code,qty,price, description]]
+    const arrayCheckout = [];
+    const eleItemsToCheckout = document.getElementById("items-to-checkout");
+    const eleCheckoutItems = eleItemsToCheckout.querySelectorAll('.product-item');
+    eleCheckoutItems.forEach( (thisEle)=>{
+        arrayCheckout.push([thisEle.children[0].children[0].innerText,
+                            thisEle.children[0].children[1].innerText,
+                            thisEle.children[0].children[2].innerText,
+                            thisEle.children[0].children[3].innerText,
+                            thisEle.children[1].innerText
+                          ]);
+    });
+    //arrayCheckout.push(arrayItems);
+    console.log("arrayCheckout: ", arrayCheckout);
+    // store this locally
+    //** const storeSales = new localStorageManager('sales'); **
+    // clear any previous checkout items - current list holds everything.
+    storeCheckout.clearTransactions();
+    storeCheckout.addTransaction(arrayCheckout);
+
+    setMessage("Save Completed.");
+})
+
+function repopulateCheckout(){
+    const arrayCheckout = storeCheckout.getTransactions();
+    console.log("checkoutItems: ", arrayCheckout);
+    if (arrayCheckout.length === 0) {
+        console.log("No checkout items found.");
+        return;
+    }
+    const eleItemsToCheckout = document.getElementById("items-to-checkout");
+    eleItemsToCheckout.innerHTML = ''; // Clear existing items
+    //arrayCheckout[0].forEach(item => {
+    for (let i=arrayCheckout[0].length - 1; i >= 0; i--){
+        let item = arrayCheckout[0][i];
+        console.log("checkout item: ", item);
+        //function addLineItemCheckout(consignment, code, quantity, price, description) 
+        addLineItemCheckout(item[0], item[1], Number(item[2]), Number(item[4], item[5]));
+    };
+}
 
 function formatLocalDateTime(date) {
   const d = new Date(date);
@@ -1234,19 +1332,19 @@ export function optionsDisplay() {
     //  <div id="scan-display">
 
     const areaControlDisplay = document.getElementById('control-display');
-    console.log(" areaControlDisplay: ", areaControlDisplay); 
     const areaCodeEntryDisplay = document.getElementById('code-entry-container');
-    console.log(" areaCodeEntryDisplay: ", areaCodeEntryDisplay);
     const areaDetailsDisplay = document.getElementById('details-display');
-    console.log("areaDetailsDisplay: ", areaDetailsDisplay);
     const areaScanDisplay = document.getElementById('scan-display');
-    console.log(" areaScanDisplay: ", areaScanDisplay);
     const areaPurchasesDisplay = document.getElementById('purchases-display');
-    console.log(" areaPurchasesDisplay: ", areaPurchasesDisplay);
     const areaSoldDisplay = document.getElementById('sold-display');
-    console.log(" areaSoldDisplay: ", areaSoldDisplay);
     const areaSettingsDisplay = document.getElementById('settings-display');
-    console.log(" areaSettingsDisplay: ", areaSettingsDisplay);
+    const eleSaveButton = document.getElementById('save-checkout');
+    const eleAddButton = document.getElementById('add-item-button');
+    const elePurchaseCommonInfo = document.getElementById('purchase-common-info');
+    const eleItemsToPurchase = document.getElementById('items-to-purchase');
+    const eleCheckoutCommonInfo = document.getElementById('checkout-common-info');
+    const eleCheckoutItemsToCheckout = document.getElementById('items-to-checkout');
+    const eleSaleTotal = document.getElementById('sale-total');
     if (selectedOption === "showScan") {
         console.log("Show control and scan areas");
         areaControlDisplay.style.display = 'block';
@@ -1269,6 +1367,12 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'none';
         cleardisplaySold();
         cleardisplayPurchases();
+        eleSaveButton.style.display = 'none';
+        eleAddButton.style.display = 'block';
+        elePurchaseCommonInfo.style.display = 'block';
+        eleCheckoutCommonInfo.style.display = 'none';
+        eleCheckoutItemsToCheckout.style.display = 'none';
+        eleItemsToPurchase.style.display = 'block'; 
     } else if (selectedOption === "showPurchases") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
@@ -1291,6 +1395,26 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'none';
         cleardisplayPurchases();
         displaySold();
+    } else if (selectedOption === "showCheckout") {
+        console.log("Show checkout = ontrol, code_entry and data entry areas");
+        areaControlDisplay.style.display = 'block';
+        areaCodeEntryDisplay.style.display = 'block';
+        areaDetailsDisplay.style.display = 'block';
+        areaScanDisplay.style.display = 'none';
+        areaPurchasesDisplay.style.display = 'none';
+        areaSoldDisplay.style.display = 'none';
+        areaSettingsDisplay.style.display = 'none';
+        cleardisplaySold();
+        cleardisplayPurchases();
+        eleSaveButton.style.display = 'block';
+        eleAddButton.style.display = 'block';
+        elePurchaseCommonInfo.style.display = 'none';
+        eleCheckoutCommonInfo.style.display = 'block';
+        eleCheckoutItemsToCheckout.style.display = 'block';
+        eleItemsToPurchase.style.display = 'none';
+        eleSaleTotal.style.display = 'none';
+        repopulateCheckout();   // repopulate the checkout area with existing items in the local storage. 
+        // This is useful if user navigates away from checkout and then comes back - they won't lose the items they have already added to the current purchase.
     } else if (selectedOption === "showSettings") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
@@ -1334,7 +1458,7 @@ async function initialiseApp() {
     
     // ADD THIS LINE to initialize the UpdateManager
     //window.updateManager = new UpdateManager();
-    const updateManager = new UpdateManager(APP_VERSION);
+    const updateManager = new UpdateManager(APP_VERSION, onlineFromFetch);
     window.updateManager = updateManager;
 
     // Initialize UI
@@ -1342,6 +1466,36 @@ async function initialiseApp() {
     
     console.log('App: Initialization complete');
 }
+
+
+// Construct Service Worker URL with version parameter
+// Version loading from central json - version.json
+let APP_URL;
+let APP_VERSION = "xxx";   //Hard fallback if fetch fails entirely
+let onlineFromFetch = false; // Flag to indicate if version was loaded from fetch   
+
+async function fetchVersion() {
+    try {
+        const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
+        if (!response.ok) throw new Error('Version file not found');
+        const data = await response.json();
+        if (data.version !== undefined) {
+            APP_VERSION = data.version;
+            console.log('Loaded version from JSON:', APP_VERSION);
+            onlineFromFetch = true;
+        } else {
+            console.log('Version not in JSON - using fallback:', APP_VERSION);
+        }        
+        return APP_VERSION;
+    } catch (error) {
+        console.warn('Failed to load version.json - using fallback:', error);
+        return APP_VERSION;  // Stick with default
+    }
+}
+fetchVersion
+// Expose APP_VERSION after fetch (for UpdateManager)
+window.getAppVersion = () => APP_VERSION;
+
 
 function updateUI() {
     // Your UI logic: Update counts from localStorage, toggle sync panel if online

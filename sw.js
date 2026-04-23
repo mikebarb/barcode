@@ -66,12 +66,23 @@ self.addEventListener('install', event => {
 });
 
 // Fetch - Cache-first strategy with network fallback
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', async event => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
     // version.json - NEVER cache, always fetch fresh over the network
     const url = new URL(event.request.url);
+
+    const IS_PRODUCTION = window.location.hostname !== 'localhost';
+    if (!IS_PRODUCTION) {
+        // Development: Bypass cache for all requests to ensure latest code is always used
+        console.log('Development mode - bypassing cache for fetching files');
+        event.respondWith(
+            fetch(event.request)  // Bypass cache entirely
+        );
+        return;
+    } 
+    
     if (url.pathname.endsWith('version.json')) {
         event.respondWith(
             fetch(event.request)  // Bypass cache entirely
