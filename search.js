@@ -4,8 +4,12 @@ export class ItemSearch {
     this.lowercaseIndex = new Map();
     this.workingArray = []; // Allocate once, reuse forever
     this.lastSearchId = 0;
-    if (!itemsData || itemsData[0].length === 0) {
+    console.log("ItemSearch - initialisation itemsData: ", itemsData);
+    if (!itemsData || itemsData.length === 0 || itemsData[0].length === 0) {
       setMessage("Search source not present - download first then reopen app!");
+      console.log("during itemSearch initialisation, search source not present: ", itemsData);
+      this.itemsMap.clear();
+      this.lowercaseIndex.clear();
       return;
     }
     itemsData.forEach(([code, description, price]) => {
@@ -14,8 +18,12 @@ export class ItemSearch {
   }
 
   refreshData(itemsData) {
-    if (!itemsData || itemsData[0].length === 0) {
+    console.log("itemsData: ", itemsData);
+    if (!itemsData || itemsData.length === 0 || itemsData[0].length === 0) {
       setMessage("Search source not present - download first then reopen app!");
+      console.log("search source not present: ", itemsData);
+      this.itemsMap.clear();
+      this.lowercaseIndex.clear();
       return;
     }
     this.itemsMap.clear();
@@ -23,6 +31,22 @@ export class ItemSearch {
     itemsData.forEach(([code, description, price]) => {
       this.addItem(code, description, price);
     });
+  }
+
+  logItemsData(){
+    console.log("logging - itemsData: ", this.itemsMap);
+  }
+
+  clearData() {
+      this.itemsMap.clear();
+      this.lowercaseIndex.clear();
+      return;
+  }
+  // Check that there is content to search on.
+  isSearchContentPresent(){
+    console.log("isSearchContentPresent- itemsMap: ", this.itemsMap);
+    console.log("length: ", this.itemsMap.size);
+    return this.itemsMap.size?true:false
   }
 
   addItem(code, description, price) {

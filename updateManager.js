@@ -7,10 +7,9 @@ import { hideUploadDownload, showUploadDownload } from "./main.js";
 
 //window.UpdateManager = UpdateManager;
 export class UpdateManager {
-    constructor(version = APP_VERSION, online = false) {
-        this.currentVersion = version;   // Use passed or global
-        //this.isOnline = navigator.onLine;
-        this.isOnline = online;         // Use passed or global
+    constructor() {
+        this.currentVersion = "xxx";   // use default until we can fetch the real version from server or SW
+        this.isOnline = false;         // default to offline until verified to avoid false positives in certain browsers
         this.maxRetries = 3;
         this.retryDelay = 2000;
         this.readyTimeout = 10000; // 10 seconds
@@ -21,6 +20,8 @@ export class UpdateManager {
     
     async init() {
         console.log('UpdateManager: Initializing version', this.currentVersion);
+
+        await this.fetchVersion(); // Start fetching version and online status immediately (async)
         
         // Set up UI first
         // This is the indicators at top of display for online/offline status and update notifications
@@ -30,7 +31,7 @@ export class UpdateManager {
         //this.updateConnectivityUI(this.isOnline); // initialise connectivity status in UI
         this.updateConnectivityVersion(this.currentVersion); // initialise version in UI        
         await this.setupEventListeners();
-        await this.verifyConnectivityStatus(); // Check initial connectivity and update UI
+        //await this.verifyConnectivityStatus(); // Check initial connectivity and update UI
 
         // Only try to register if online
         console.log('UpdateManager: Initial connectivity status:', this.isOnline);
@@ -75,6 +76,66 @@ export class UpdateManager {
         console.log('UpdateManager: Initialization complete');
     }
 
+    // This function does a fetch to the server to verify:
+    // 1. Connectivity to the server (not just network)
+    // 2. Get the current version from the server (if online)
+    // As such, it can be used just to check connectivity even when version from serveris not needed.
+    async fetchVersion() {
+        try {
+            // Lightweight fetch to test connectivity
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+            console.log('UpdateManager: Starting fetch...');
+            const response = await fetch('/version.json', {
+                cache: 'no-cache',
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            console.log('UpdateManager: Fetch succeeded, status:', response.status);
+            console.log('UpdateManager: Response URL:', response.url);  // Check if from cache
+            if (response.ok) {
+                console.log('UpdateManager-fetchVersion: Connectivity verified - online');
+                this.handleOnline();
+                const data = await response.json();
+                if (data.version !== undefined) {
+                    this.currentVersion = data.version;
+                    console.log('Loaded version from JSON:', this.currentVersion);
+                } else {
+                    console.log('Version not in JSON - using fallback:', this.currentVersion);
+                }        
+            } else {
+                console.log('UpdateManager-fetchVersion: Connectivity verified - offline');
+                this.handleOffline();
+            }
+        } catch (error) {
+            // Network failed - definitely offline
+            console.log('UpdateManager: Fetch failed:', error.name, error.message);
+            this.handleOffline();
+        }
+
+/*
+
+        try {
+            const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
+            if (!response.ok) throw new Error('Version file not found');
+            this.online = true; // If fetch succeeds, we are online
+            const data = await response.json();
+            if (data.version !== undefined) {
+                this.currentVersion = data.version;
+                console.log('Loaded version from JSON:', this.currentVersion);
+            } else {
+                console.log('Version not in JSON - using fallback:', this.currentVersion);
+            }        
+            return this.currentVersion;
+        } catch (error) {
+            console.warn('Failed to load version.json - using fallback:', error);
+            return this.currentVersion;  // Stick with default
+        }
+            */
+    }
+
+
     async getCachedSWVersion() {
         console.log('UpdateManager: Checking for cached Service Worker version...');
         const registration = await navigator.serviceWorker.getRegistration();
@@ -93,7 +154,7 @@ export class UpdateManager {
         return null;
     }
 
-
+    /*
     async verifyConnectivityStatus() {
         console.log('UpdateManager: Verifying connectivity status...');
         console.log('navigator.onLine:', navigator.onLine);
@@ -113,6 +174,7 @@ export class UpdateManager {
             if (response.ok) {
                 console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - online');
                 this.handleOnline();
+
             } else {
                 console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - offline');
                 this.handleOffline();
@@ -123,7 +185,7 @@ export class UpdateManager {
             this.handleOffline();
         }
     }
-    
+    */  
     async registerServiceWorker() {
         // Check browser support
         if (!('serviceWorker' in navigator)) {
@@ -284,7 +346,8 @@ export class UpdateManager {
         // Network status monitoring
         window.addEventListener('online', () => {
             //this.handleOnline();
-            this.verifyConnectivityStatus(); // Re-verify connectivity to the server
+            //this.verifyConnectivityStatus(); // Re-verify connectivity to the server
+            this.fetchVersion();    // Fetch version to confirm connectivity
         });
         
         window.addEventListener('offline', () => {

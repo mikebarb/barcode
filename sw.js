@@ -17,7 +17,6 @@ self.addEventListener('message', (event) => {
 
 const STATIC_CACHE_URLS = [
     './',
-    './version.json',
     './index.html',
     './main.js',
     './inputManager.js',
@@ -34,7 +33,8 @@ const STATIC_CACHE_URLS = [
 ];
 
 
-let APP_VERSION = '1.1';
+//let APP_VERSION = '1.1';
+let APP_VERSION = 'sw-default';
 
 // Get version from URL or use default
 const urlParams = new URL(self.location.href).searchParams;
@@ -67,13 +67,20 @@ self.addEventListener('install', event => {
 
 // Fetch - Cache-first strategy with network fallback
 self.addEventListener('fetch', async event => {
+    console.log('***Fetch event for:', event.request.url);
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
+    // Bypass the service worker for Google Scripts
+    if (event.request.url.includes('script.google.com')) {
+        return; // Let the browser handle the request normally
+    }
+
     // version.json - NEVER cache, always fetch fresh over the network
     const url = new URL(event.request.url);
+    console.log('Fetch event for:', url.pathname);
 
-    const IS_PRODUCTION = window.location.hostname !== 'localhost';
+    const IS_PRODUCTION = self.location.hostname !== 'localhost';
     if (!IS_PRODUCTION) {
         // Development: Bypass cache for all requests to ensure latest code is always used
         console.log('Development mode - bypassing cache for fetching files');
@@ -108,6 +115,7 @@ self.addEventListener('fetch', async event => {
                             caches.open(CACHE_NAME).then(cache => {
                                 cache.put(event.request, responseToCache);
                             });
+                            console.log('Fetched from network and cached:', event.request.url);
                         }
                         return networkResponse;
                     })

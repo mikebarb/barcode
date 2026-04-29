@@ -12,10 +12,10 @@ import {UpdateManager} from './updateManager.js';
 
 
 // Test deployment
-//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
-const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
+//const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
 
 // Initialize class instances
 const inputManager  = new InputManager();
@@ -26,12 +26,16 @@ const storeStock    = new localStorageManager('stock');
 const storedLastUpdateTime = new localStorageManager('lastUpdateTime');
 //const storeScans   = new localStorageManager('scans');
 
+// to track if there are unsaved items in the checkout list,
+// so we can warn user if they try to switch away from this view.
+let unsavedCheckoutItems = 0; 
+
 // Export the function for module use
 // and also attach to window for legacy scripts
 window.processScanResults = processScanResults;
 export function processScanResults(codeFormat, code) {
-    // put into the inputCode field in the main data-entry area - Ausid field
-    const inputField = document.getElementById('inputCode');
+    // put into the input-code field in the main data-entry area - Ausid field
+    const inputField = document.getElementById('input-code');
     inputField.value = code;
     // As a barcode is found, hide the scanning area and show details-display area.
     document.getElementById("scan-display").style.display = 'none';
@@ -130,10 +134,10 @@ document.addEventListener('click', function(event) {
 });
 
 // Initialize dropdown with default value - Activity Type
-document.getElementById("dropdownOptions").firstElementChild.click();
+//**document.getElementById("dropdownOptions").firstElementChild.click();
 
 // Initialize dropdown with default value - Sale Type
-document.getElementById("dropdownSaleTypeOptions").firstElementChild.click();
+//**document.getElementById("dropdownSaleTypeOptions").firstElementChild.click();
 
 // Get the selected value when called from from anywhere
 window.getSelectedOption = getSelectedOption;
@@ -192,18 +196,36 @@ customInput.addEventListener('change', function() {
 
 //------ add button event listener and associated functions ---------------------
 // This adds the displayed item to the purchased items list - dynamic display area.
-const addItemButton = document.getElementById('add-item-button');
-addItemButton.addEventListener('click', function() {
+document.getElementById('add-item-button').addEventListener('click', function() {
+    addItemButtonClicked();
+});
+
+function addItemButtonClicked(){
     console.log('Add Item Button clicked.');
+    // Check if a consignement id is present.
+    const consignmentInput = document.getElementById("consignmentTextInput");
+    if (getSelectedOption() === "showCheckout" && consignmentInput.value.trim() === "") {
+        setMessage("Please enter a consignment ID.");
+        // set background colour to orange for 2 seconds to highlight the issue
+        consignmentInput.style.backgroundColor = 'orange';
+        setTimeout(() => {
+            consignmentInput.style.backgroundColor = '';
+        }, 2000);   
+        return;
+    }
     addItem();
     hideDiscountArea();
-    document.getElementById("quantityNumbericInput").value = 1;
-});
+    // For sales, reset the quantity to 1 for the next item.
+    if(getSelectedOption() === "showSales"){
+        document.getElementById("quantityNumbericInput").value = 1;
+    }
+}
 
 //--------- adds an ausil item to the list
 // calls on the addLineItemSales or addLineItemCheckout.
+
 function addItem(){
-    const code = document.getElementById("inputCode").value;
+    const code = document.getElementById("input-code").value;
     console.log("code to check: ", code);
     if (checkCodePresent(code)){
         setMessage("This Ausid has already been added!");
@@ -226,10 +248,11 @@ function addItem(){
         const consignment = document.getElementById("consignmentTextInput").value;
         console.log("consignment: ", consignment);
         addLineItemCheckout(consignment, code, quantity, price, description);
+        unsavedCheckoutItems += 1; 
     }
     // clear the details area for next item & ausid entry
     clearDetailsWrapper();
-    document.getElementById("inputCode").value = '';
+    document.getElementById("input-code").value = '';
 }
 
 function addLineItemCheckout(consignment, code, quantity, price, description){  
@@ -511,7 +534,7 @@ document.getElementById("finalise-purchase").addEventListener('click', (e) => {
     document.getElementById("emailTextInput").value = "";
     document.getElementById("nameTextInput").value = "";
     document.getElementById("commentTextarea").value = "";
-    document.getElementById("inputCode").value = "";
+    document.getElementById("input-code").value = "";
     eleItemsToPurchase.innerHTML = '';
     calculateSaleTotal();
     document.getElementById("quantityNumbericInput").value = 1;
@@ -521,17 +544,21 @@ document.getElementById("finalise-purchase").addEventListener('click', (e) => {
 // code to act on the Check-out Save button
 document.getElementById("save-checkout").addEventListener('click', (e) => {
     console.log("event on saving checkout items", e);
-    // build the array 
+    saveCheckoutItems();
+})
+
+function saveCheckoutItems(){
+// build the array 
     //[consignment,code,qty,price, description]]
     const arrayCheckout = [];
     const eleItemsToCheckout = document.getElementById("items-to-checkout");
     const eleCheckoutItems = eleItemsToCheckout.querySelectorAll('.product-item');
     eleCheckoutItems.forEach( (thisEle)=>{
-        arrayCheckout.push([thisEle.children[0].children[0].innerText,
-                            thisEle.children[0].children[1].innerText,
-                            thisEle.children[0].children[2].innerText,
-                            thisEle.children[0].children[3].innerText,
-                            thisEle.children[1].innerText
+        arrayCheckout.push([thisEle.children[0].children[0].innerText,   // consignment
+                            thisEle.children[0].children[1].innerText,   //code
+                            thisEle.children[0].children[2].innerText,   //quantity
+                            thisEle.children[0].children[3].innerText,   //price
+                            thisEle.children[1].innerText                //description
                           ]);
     });
     //arrayCheckout.push(arrayItems);
@@ -542,8 +569,11 @@ document.getElementById("save-checkout").addEventListener('click', (e) => {
     storeCheckout.clearTransactions();
     storeCheckout.addTransaction(arrayCheckout);
 
-    setMessage("Save Completed.");
-})
+    // Clear the tracking of unsaved checkout items.
+    unsavedCheckoutItems = 0;
+
+    setMessage("Save of checkout items completed.");
+}
 
 function repopulateCheckout(){
     const arrayCheckout = storeCheckout.getTransactions();
@@ -559,7 +589,7 @@ function repopulateCheckout(){
         let item = arrayCheckout[0][i];
         console.log("checkout item: ", item);
         //function addLineItemCheckout(consignment, code, quantity, price, description) 
-        addLineItemCheckout(item[0], item[1], Number(item[2]), Number(item[4], item[5]));
+        addLineItemCheckout(item[0], item[1], Number(item[2]), Number(item[3], item[4]));
     };
 }
 
@@ -594,9 +624,24 @@ document.getElementById("upload-sales").addEventListener('click', (e) => {
     //console.log("event on upload sales", e);
     // if phone is offline, abort
     if (!updateManager.getStatus().isOnline) {
-        console.log("Device is offline. Cannot upload sales.");
+        console.log("Device is offline. Cannot upload data.");
         return;
     }
+    if(getSelectedOption() === "showSales"){
+        console.log("upload sales to google sheets");
+        uploadSales();
+    }else if(getSelectedOption() === "showCheckout"){
+        // first save the checkout items to local storage, then upload to google sheets.
+        if(unsavedCheckoutItems > 0){
+            saveCheckoutItems();
+        }
+        console.log("upload checkout items to google sheets");
+        uploadCheckout();
+    }
+});
+
+function uploadSales(){
+    //console.log("event on upload sales", e);
     let nowGmtDateTime = [];
     if (storedLastUpdateTime.getTransactions().length != 0) {
         nowGmtDateTime = storedLastUpdateTime.getTransactions()[0][0];
@@ -605,35 +650,65 @@ document.getElementById("upload-sales").addEventListener('click', (e) => {
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         nowGmtDateTime = formatGmtDateTimeNumber(oneYearAgo);
     }
-    //console.log("nowGmtDateTime", nowGmtDateTime);
+    console.log("nowGmtDateTime", nowGmtDateTime);
     const salesStored = storeSales.getTransactions();
     if (salesStored.length == 0){
         setMessage("No sales to upload.");
         return;
     }
-    //console.log("sales stored: ", salesStored);
-    //console.log("Qty sales stored: ", salesStored.length);
+    console.log("sales stored: ", salesStored);
+    console.log("Qty sales stored: ", salesStored.length);
     const transactions = [];
     const transaction = [];
+    const deviceId = getDeviceId();
     salesStored.forEach(sale=>{
         //if(sale[0] > nowGmtDateTime){
             transaction.length = 0;
-            transaction[0] = sale[0];
-            transaction[1] = sale[1];
-            transaction[2] = sale[2];
-            transaction[3] = sale[3];
-            transaction[4] = sale[4];
+            transaction[0] = deviceId;
+            transaction[1] = sale[0];
+            transaction[2] = sale[1];
+            transaction[3] = sale[2];
+            transaction[4] = sale[3];
+            transaction
             sale[5].forEach(item=>{
-                transaction[5] = item[0];
-                transaction[6] = item[1];
-                transaction[7] = item[2];
+                transaction[6] = item[0];
+                transaction[7] = item[1];
+                transaction[8] = item[2];
                 transactions.push([...transaction]);
             });
         //}
     });
     // store in google sheets on the web.
     appendGoogleSheet("transactions", transactions);
-});
+};
+
+function uploadCheckout(){
+    //console.log("event on upload checkout", e);
+    
+    const checkoutStored = storeCheckout.getTransactions();
+    if (checkoutStored.length == 0){
+        setMessage("No checkout items to upload.");
+        return;
+    }
+    console.log("checkout stored: ", checkoutStored);
+    console.log("Qty checkout stored: ", checkoutStored.length);
+    const transactions = [];
+    const transaction = [];
+    const deviceId = getDeviceId();
+    checkoutStored[0].forEach(item=>{
+        transaction.length = 0;
+        transaction[0] = item[1];     // Ausil Id
+        transaction[1] = item[4];     // Title
+        transaction[2] = item[3];     // Unit Price
+        transaction[3] = item[2];     // Quantity
+        transaction[4] = item[0];     // Consignment Id
+        transaction[5] = deviceId;     // Device Id
+        transactions.push([...transaction]);
+    });
+    // store in google sheets on the web.
+    appendGoogleSheet("taken", transactions);
+};
+
 
 //----add button event listener to download stock info from google sheets and associated functions ---------------------
 document.getElementById("download-stock").addEventListener('click', (e) => {
@@ -646,21 +721,99 @@ document.getElementById("download-stock").addEventListener('click', (e) => {
     const stockStored = storeStock.getTransactions();
     console.log("stock stored: ", stockStored);
     let stockInfo = readGoogleSheet("Stock");
+    console.log("stock info from google sheets: ", stockInfo);
+
+    const wasLinked = searchStockManager === searchManager;  
+    searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+    if (wasLinked ) {
+        searchManager = searchStockManager;
+    }
 });
+
+//----add button event listener to download checkout info from google sheets and associated functions ---------------------
+document.getElementById("download-checkout").addEventListener('click', (e) => {
+    console.log("event to download checkout", e);
+    // if phone is offline, abort
+    if (!updateManager.getStatus().isOnline) {
+        console.log("Device is offline. Cannot download-checkout.");
+        return;
+    }
+    // Do an upload first to ensure any unsaved checkout items are saved
+    // to google sheets before downloading the checkout info.
+
+    // first save the checkout items to local storage, then upload to google sheets.
+    if(unsavedCheckoutItems > 0){
+        saveCheckoutItems();
+    }
+    console.log("upload checkout items to google sheets before downloading");
+    uploadCheckout();
+    // Now download the checkout info from google sheets and store in local storage,
+    // then repopulate the checkout area with this info.
+    //***storeCheckout.clearTransactions();
+    const checkoutStored = storeCheckout.getTransactions();
+    console.log("checkout stored: ", checkoutStored);
+    let checkoutInfo = readGoogleSheet("taken");
+    console.log("checkout info from google sheets: ", checkoutInfo);
+
+    const wasLinked = searchCheckoutManager === searchManager;  
+    searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+    if (wasLinked ) {
+        searchManager = searchCheckoutManager;
+    }
+});
+
+//----add button event listener to download stock info from google sheets and associated functions ---------------------
+document.getElementById("clear-local-stores").addEventListener('click', (e) => {
+    console.log("event to clear all local storage", e);
+    // if phone is offline, abort
+    if (!updateManager.getStatus().isOnline) {
+        console.log("Device is offline. Cannot clear the local storage.");
+        return;
+    }
+    
+    storeSales.clearTransactions();
+    const salesStored = storeSales.getTransactions();
+    console.log("sales stored: ", salesStored);
+    storeStock.clearTransactions();
+    const stockStored = storeStock.getTransactions();
+    console.log("stock stored: ", stockStored);
+    storeCheckout.clearTransactions();
+    const checkoutStored = storeCheckout.getTransactions();
+    console.log("checkout stored: ", checkoutStored);
+
+    let wasLinked = searchStockManager === searchManager;  
+    searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+    if (wasLinked ) {
+        searchManager = searchStockManager;
+    }
+    console.log("searchStockManager has content", searchStockManager.isSearchContentPresent);
+
+    wasLinked = searchCheckoutManager === searchManager;  
+    searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+    if (wasLinked ) {
+        searchManager = searchCheckoutManager;
+    }
+    console.log("searchCheckoutManager has content", searchCheckoutManager.isSearchContentPresent);
+});
+
 
 // Hide upload and download buttons - used when offline.
 export function hideUploadDownload(){
     document.getElementById("upload-sales").style.backgroundColor = "rgb(200, 200, 200";
-    document.getElementById("download-stock").style.backgroundColor = "rgb(200, 200, 200)";
+    //document.getElementById("download-stock").style.backgroundColor = "rgb(200, 200, 200)";
 }   
 // Show upload and download buttons - used when online.
 export function showUploadDownload(){
     document.getElementById("upload-sales").style.backgroundColor = "rgb(0, 122, 255)";
-    document.getElementById("download-stock").style.backgroundColor = "rgb(0, 122, 255)";
+    //document.getElementById("download-stock").style.backgroundColor = "rgb(0, 122, 255)";
 }
 
 // Initialize the search manager for searching against stock data
-const searchManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+let searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+// Initialize the search manager for searching against stock data
+let searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+let searchManager = searchCheckoutManager;
+// do some code
 
 // Clear the sold items display
 function cleardisplayPurchases() {
@@ -1045,11 +1198,12 @@ function getDeviceId(){
 // Write data using JSONP
 async function appendGoogleSheet(sheetName, transactions) {
     const spreadSheetId = getSpreadSheetId();
-    const deviceId = getDeviceId();
+    //const deviceId = getDeviceId();
     // prepend device id on all the transactions
-    transactions.forEach(transaction =>{
-        transaction.unshift(deviceId);
-    })
+    
+    //transactions.forEach(transaction =>{
+    //    transaction.unshift(deviceId);
+    //})
     console.log("=======transactions=======: ", transactions);
     try {
         //console.log("Initiating appendGoogleSheet append request with transactions:", transactions);
@@ -1064,7 +1218,7 @@ async function appendGoogleSheet(sheetName, transactions) {
             const lastUpdated = storedLastUpdateTime.getTransactions();
             //console.log("===Last stored time: ", lastUpdated);
             clearMessage();
-            setMessage("Sales data uploaded successfully.");  
+            setMessage(`Data uploaded successfully to sheet ${sheetName}.`);
         }
     }
     catch (error) {
@@ -1080,25 +1234,41 @@ async function readGoogleSheet(sheetName) {
     try {
         //console.log('Starting readGoogleSheet read request...');
         const result = await client.readData(spreadSheetId, sheetName);
-        //console.log ('readGoogleSheet Result: ', result);
+        console.log ('readGoogleSheet Result: ', result);
         if (result.success) {
-            //console.log('readGoogleSheet Data retrieved successfully:', result.data);
-            let stockInfo = result.data;
+            console.log('readGoogleSheet Data retrieved successfully:', result.data);
+            let sheetContent = result.data;
+            let sheetContentEmpty = false;
+            //if(sheetContent.length === 0){
+            //    sheetContentEmpty = true;
+            //}
             //console.log("stockInfo: ", stockInfo);
-            //console.log("stockInfo[0]: ", stockInfo[0]);
-            //console.log("stockInfo[0][0]: ", stockInfo[0][0]);
-            stockInfo.shift();   // don't want the header
+            sheetContent.shift();   // don't want the header
             // store the stock info locally.
-            storeStock.clearTransactions();
-            storeStock.addTransaction(stockInfo);
-            //const stockStored = storeStock.getTransactions();
-            //console.log("stock stored: ", stockStored);
-            
+            if(sheetName === "Stock"){
+                storeStock.clearTransactions();
+                console.log("stock - content to load");
+                //if(sheetContentEmpty){
+                //    searchManager.clearData;
+                //}
+                storeStock.addTransaction(sheetContent);
+                searchStockManager.refreshData(sheetContent);
+                const stockStored = storeStock.getTransactions();
+                console.log("readGoogleSheet - check read back: stock stored: ", stockStored);
+            }else if (sheetName === "taken") {
+                console.log("about to clear storeCheckout");
+                storeCheckout.clearTransactions();
+                console.log("checkout - content to load: ", sheetContent);
+                storeCheckout.addTransaction(sheetContent);
+                searchCheckoutManager.refreshData(sheetContent);
+                const checkoutStored = storeCheckout.getTransactions();
+                console.log("readGoogleSheet - check read back: checkout stored: ", checkoutStored);            
+            }
             // Need to refresh the local stored instance of this data.
-            //searchManager.refreshData(storeStock.getTransactions()[0]);
-            searchManager.refreshData(stockInfo);
+            //searchManager.refreshData(storeCheckout.getTransactions()[0]);
+            //searchManager.refreshData(stockInfo);
             clearMessage();
-            setMessage("Stock data downloaded successfully.");  
+            setMessage("Data downloaded successfully.");  
             return result.data;
         } else {
             console.error('readGoogleSheet Failed to retrieve data:', result.message);
@@ -1115,8 +1285,8 @@ async function readGoogleSheet(sheetName) {
 
 // Add event listener on the Ausil code entry input field to clear search results
 // when user alters the code. At this point, the displayed details become invalid.
-document.getElementById("inputCode").addEventListener('input', (e) => {
-    console.log("event on inputCode change - clear ausil item details", e);
+document.getElementById("input-code").addEventListener('input', (e) => {
+    console.log("event on input-code change - clear ausil item details", e);
     clearDetailsWrapper();
 });
 
@@ -1125,7 +1295,7 @@ document.getElementById("inputCode").addEventListener('input', (e) => {
 // ==================== SEARCH FUNCTIONS ====================
 let globalResultsArray = [];
 
-document.getElementById("detailsSearch").addEventListener('click', doSearchTextFromButton);
+document.getElementById("details-search").addEventListener('click', doSearchTextFromButton);
 document.getElementById("search-input").addEventListener('input', doSearchText);
 //document.getElementById("search-input").addEventListener('keydown', doSearchText);
 
@@ -1135,7 +1305,11 @@ document.getElementById("search-container").style.display = 'none';
 function doSearchTextFromButton(){
     clearMessage();
     clearDetailsWrapper();
-    const searchText = document.getElementById("inputCode").value;
+    if(!searchManager.isSearchContentPresent()){
+        setMessage("No content to search on - download or generate!");
+        return;
+    }
+    const searchText = document.getElementById("input-code").value;
     document.getElementById("search-input").value = searchText;
     document.getElementById("search-container").style.display = 'block';
     doSearchText().then(() => {
@@ -1153,7 +1327,7 @@ async function doSearchText(){
     console.log("foundItem: ", foundItem);
     if (foundItem){
         // update ausil Code entry with this foundItem details
-        document.getElementById("inputCode").value = foundItem.code;
+        document.getElementById("input-code").value = foundItem.code;
         document.getElementById("search-display-area").innerHTML = "";
         document.getElementById("search-container").style.display = 'none';
         document.getElementById("details-wrapper").style.display = 'block';
@@ -1216,7 +1390,7 @@ function selectItem(item) {
     console.log("You have selected: ", item);
     //this.searchInput.value = item.code; // Or whatever you want to do
     document.getElementById("search-display-area").innerHTML = '';
-    document.getElementById("inputCode").value = item.code;
+    document.getElementById("input-code").value = item.code;
     document.getElementById("details-wrapper").style.display = 'block';
     document.getElementById("details-cost").textContent = item.price.toFixed(2);
     document.getElementById("details-description").textContent = item.description;
@@ -1345,6 +1519,11 @@ export function optionsDisplay() {
     const eleCheckoutCommonInfo = document.getElementById('checkout-common-info');
     const eleCheckoutItemsToCheckout = document.getElementById('items-to-checkout');
     const eleSaleTotal = document.getElementById('sale-total');
+
+    // When leaving the checkout area, need to save unsaved checkout items.
+    if(unsavedCheckoutItems > 0){
+        saveCheckoutItems();
+    }
     if (selectedOption === "showScan") {
         console.log("Show control and scan areas");
         areaControlDisplay.style.display = 'block';
@@ -1356,6 +1535,7 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'none';
         cleardisplaySold();
         cleardisplayPurchases();
+        hideUploadDownload();
     } else if (selectedOption === "showSales") {
         console.log("Show ontrol, code_entry and data entry areas");
         areaControlDisplay.style.display = 'block';
@@ -1372,7 +1552,9 @@ export function optionsDisplay() {
         elePurchaseCommonInfo.style.display = 'block';
         eleCheckoutCommonInfo.style.display = 'none';
         eleCheckoutItemsToCheckout.style.display = 'none';
-        eleItemsToPurchase.style.display = 'block'; 
+        eleItemsToPurchase.style.display = 'block';
+        if(getOnlineStatusFromUpdateManager()){showUploadDownload();}
+        searchManager = searchCheckoutManager;
     } else if (selectedOption === "showPurchases") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
@@ -1384,6 +1566,7 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'none';
         cleardisplaySold();
         displayPurchases();
+        hideUploadDownload();
     } else if (selectedOption === "showSold") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
@@ -1395,6 +1578,7 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'none';
         cleardisplayPurchases();
         displaySold();
+        hideUploadDownload();
     } else if (selectedOption === "showCheckout") {
         console.log("Show checkout = ontrol, code_entry and data entry areas");
         areaControlDisplay.style.display = 'block';
@@ -1413,8 +1597,12 @@ export function optionsDisplay() {
         eleCheckoutItemsToCheckout.style.display = 'block';
         eleItemsToPurchase.style.display = 'none';
         eleSaleTotal.style.display = 'none';
-        repopulateCheckout();   // repopulate the checkout area with existing items in the local storage. 
+        if(getOnlineStatusFromUpdateManager()){showUploadDownload();}
+        // repopulate the checkout area with existing items in the local storage. 
         // This is useful if user navigates away from checkout and then comes back - they won't lose the items they have already added to the current purchase.
+        repopulateCheckout();
+        // Need to update the searchable content based on choosing sales or checkout.
+        searchManager = searchStockManager;
     } else if (selectedOption === "showSettings") {
         console.log("Show control, sold display areas");
         areaControlDisplay.style.display = 'block';
@@ -1426,6 +1614,7 @@ export function optionsDisplay() {
         areaSettingsDisplay.style.display = 'block';
         cleardisplaySold();
         cleardisplayPurchases();
+        hideUploadDownload();
     } else {
         console.log("Show all areas");
         areaControlDisplay.style.display = 'block';
@@ -1434,6 +1623,15 @@ export function optionsDisplay() {
         areaScanDisplay.style.display = 'block';
         areaSoldDisplay.style.display = 'block';
         cleardisplayPurchases();
+    }
+}
+// Issue with update manager being on line early enough for this code
+// during application load.
+function getOnlineStatusFromUpdateManager() {
+    if (window.updateManager) {
+        return window.updateManager.getStatus().isOnline;
+    } else {
+        return false;
     }
 }
 
@@ -1445,10 +1643,11 @@ async function initialiseApp() {
     console.log('App: Initializing PWA...');
     
     // Fetch version early (non-blocking)
-    await fetchVersion();
-    APP_URL = `./sw.js?v=${APP_VERSION}`;
-    console.log('App URL with version:', APP_URL);
-
+    
+    // await fetchVersion();
+    // APP_URL = `./sw.js?v=${APP_VERSION}`;
+    // console.log('App URL with version:', APP_URL);
+    
 
     // YOUR EXISTING INITIALIZATION CODE HERE
     // setupScanner();
@@ -1458,18 +1657,29 @@ async function initialiseApp() {
     
     // ADD THIS LINE to initialize the UpdateManager
     //window.updateManager = new UpdateManager();
-    const updateManager = new UpdateManager(APP_VERSION, onlineFromFetch);
+    //const updateManager = new UpdateManager(APP_VERSION, onlineFromFetch);
+    const updateManager = new UpdateManager();
     window.updateManager = updateManager;
 
     // Initialize UI
     //?? updateUI();
     
+    // Initialize dropdown with default value - Activity Type
+    document.getElementById("dropdownOptions").firstElementChild.click();
+
+    // Initialize dropdown with default value - Sale Type
+    document.getElementById("dropdownSaleTypeOptions").firstElementChild.click();
+
+
+
     console.log('App: Initialization complete');
+    setMessage("Application initialised.")
 }
 
 
 // Construct Service Worker URL with version parameter
 // Version loading from central json - version.json
+/*
 let APP_URL;
 let APP_VERSION = "xxx";   //Hard fallback if fetch fails entirely
 let onlineFromFetch = false; // Flag to indicate if version was loaded from fetch   
@@ -1495,7 +1705,7 @@ async function fetchVersion() {
 fetchVersion
 // Expose APP_VERSION after fetch (for UpdateManager)
 window.getAppVersion = () => APP_VERSION;
-
+*/
 
 function updateUI() {
     // Your UI logic: Update counts from localStorage, toggle sync panel if online

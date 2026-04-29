@@ -587,8 +587,9 @@ button:disabled {
     font-size: 14px;
     border: 2px solid gray;
 }
+/* end of extra styles for the sold items area */
 
-/* Settins */
+/* Settings */
 .settings-btn {
     padding: 10px 15px;
     font-size: 14px;
@@ -597,6 +598,32 @@ button:disabled {
     color: white;
     background-color: #007aff;
 }
+#transfer-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+    color: black;
+    background-color: lightblue;
+}
+#clear-local-storage-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    margin: 5px;
+    color: black;
+    background-color: lightpink;
+}
+
+
+
+
 /*----------------------------------*/
 /* PWA - Service Worker Stuff       */
 /*----------------------------------*/
