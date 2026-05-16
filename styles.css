@@ -129,7 +129,7 @@ button:disabled {
 }
 .customDropdown {
     position: relative;
-    /*width: 200px;*/
+    width: 120px;
     color: black;
     background-color: white;
     padding: 10px;
@@ -223,7 +223,7 @@ button:disabled {
     font-size: 14px;
     font-family: inherit;
     flex:1;
-    min-width:65%;
+    /* min-width:65%; */
 }
 #code-entry-buttons {
     display: flex;
@@ -264,7 +264,7 @@ button:disabled {
 }
 
 .numeric-input-container input {
-    width: 80px;
+    width: 40px;
     text-align: center;
     margin: 0 5px;
 }
@@ -274,16 +274,17 @@ button:disabled {
     color: white;
     border-radius: 10px;
 }
-#add-item-button {
+#add-item-button, #save-item-button {
     padding: 10px 15px;
     font-size: 14px;
-    border-radius: 6px;
+    border-radius: 10px;
     margin: 5px;
     background-color: #007aff; /* iOS blue */
     color: white;
-    min-width: 100px;
+    min-width: 50px;
     cursor: pointer;
 }
+
 /* end of - Styles for input numberic input */
 
 /* styles for discount display */

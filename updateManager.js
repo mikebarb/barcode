@@ -15,6 +15,7 @@ export class UpdateManager {
         this.readyTimeout = 10000; // 10 seconds
         this.updateInProgress = false; // Prevent concurrent updates
         this.toastQueue = []; // Queue for pending toasts
+        this.toastActive = false; // Flag to indicate if a toast is currently being displayed
         this.init();
     }
     
@@ -79,7 +80,7 @@ export class UpdateManager {
     // This function does a fetch to the server to verify:
     // 1. Connectivity to the server (not just network)
     // 2. Get the current version from the server (if online)
-    // As such, it can be used just to check connectivity even when version from serveris not needed.
+    // As such, it can be used just to check connectivity even when version from server is not needed.
     async fetchVersion() {
         try {
             // Lightweight fetch to test connectivity
@@ -93,14 +94,15 @@ export class UpdateManager {
             
             clearTimeout(timeoutId);
             console.log('UpdateManager: Fetch succeeded, status:', response.status);
-            console.log('UpdateManager: Response URL:', response.url);  // Check if from cache
+            console.log('UpdateManager: Response URL:', response.url);  
+            // Check if from cache
             if (response.ok) {
                 console.log('UpdateManager-fetchVersion: Connectivity verified - online');
                 this.handleOnline();
                 const data = await response.json();
                 if (data.version !== undefined) {
                     this.currentVersion = data.version;
-                    console.log('Loaded version from JSON:', this.currentVersion);
+                    console.log('Loaded version value from JSON:', this.currentVersion);
                 } else {
                     console.log('Version not in JSON - using fallback:', this.currentVersion);
                 }        
@@ -113,28 +115,7 @@ export class UpdateManager {
             console.log('UpdateManager: Fetch failed:', error.name, error.message);
             this.handleOffline();
         }
-
-/*
-
-        try {
-            const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
-            if (!response.ok) throw new Error('Version file not found');
-            this.online = true; // If fetch succeeds, we are online
-            const data = await response.json();
-            if (data.version !== undefined) {
-                this.currentVersion = data.version;
-                console.log('Loaded version from JSON:', this.currentVersion);
-            } else {
-                console.log('Version not in JSON - using fallback:', this.currentVersion);
-            }        
-            return this.currentVersion;
-        } catch (error) {
-            console.warn('Failed to load version.json - using fallback:', error);
-            return this.currentVersion;  // Stick with default
-        }
-            */
     }
-
 
     async getCachedSWVersion() {
         console.log('UpdateManager: Checking for cached Service Worker version...');
@@ -154,40 +135,8 @@ export class UpdateManager {
         return null;
     }
 
-    /*
-    async verifyConnectivityStatus() {
-        console.log('UpdateManager: Verifying connectivity status...');
-        console.log('navigator.onLine:', navigator.onLine);
-        try {
-            // Lightweight fetch to test connectivity
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-            console.log('UpdateManager: Starting fetch...');
-            const response = await fetch('/version.json', {
-                cache: 'no-cache',
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            console.log('UpdateManager: Fetch succeeded, status:', response.status);
-            console.log('UpdateManager: Response URL:', response.url);  // Check if from cache
-            if (response.ok) {
-                console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - online');
-                this.handleOnline();
-
-            } else {
-                console.log('UpdateManager-verifyConnectivityStatus: Connectivity verified - offline');
-                this.handleOffline();
-            }
-        } catch (error) {
-            // Network failed - definitely offline
-            console.log('UpdateManager: Fetch failed:', error.name, error.message);
-            this.handleOffline();
-        }
-    }
-    */  
     async registerServiceWorker() {
-        // Check browser support
+        // Check browser support for service workers
         if (!('serviceWorker' in navigator)) {
             console.warn('UpdateManager: Service Workers not supported');
             this.showUnsupportedWarning();
@@ -220,6 +169,7 @@ export class UpdateManager {
             console.error('UpdateManager: Service Worker registration failed:', error);
             this.showRegistrationError(error);
             this.updateInProgress = false;
+            this.showToast('UpdateManager: Service Worker registration failed.', 'failed', 3000);
             return false;
         }
     }
@@ -280,10 +230,10 @@ export class UpdateManager {
         
         switch (data.type) {
             case 'UPDATE_AVAILABLE':
-                this.showUpdateNotification(data.message || 'New app version detected - refresh to update.');
+                this.showToast(data.message || 'New app version detected - refresh to update.', 'success', 4000);
                 break;
             case 'UPDATE_INSTALLED':
-                this.showToast('Update installed successfully - refresh the page to apply.', 'success');
+                this.showToast('Update installed successfully - refresh the page to apply.', 'success', 4000);
                 break;
             case 'ACTIVATION_COMPLETE':
                 this.showToast('PWA update activated. Welcome to the latest version!', 'success', 4000);
@@ -524,24 +474,14 @@ export class UpdateManager {
         }
         console.log('UpdateManager: Update check completed');
     }
-    
-    showUpdateNotification(message) {
-        // Show the update indicator
-        const updateIndicator = document.getElementById('update-indicator');
-        if (updateIndicator) {
-            updateIndicator.style.display = 'block';
-            updateIndicator.innerHTML = `🔄 ${message} (v${this.currentVersion}) - Click to update`;
-            updateIndicator.setAttribute('title', message);
-        }
-        
-        // Also show a toast notification
-        //this.showToast(message, 'info', 5000);
-    }
-    
+   
     showToast(message, type = 'info', duration = 10000) {
+        console.log("showToast called with message:", this.getTimestamp(), message, "type:", type, "duration:", duration);
         // Sequence toast notifications
         this.toastQueue.push({ message, type, duration });   // Add to queue
-        if (this.toastQueue.length === 1) { // If this is the only toast, show it immediately
+        console.log("Toast queue: ", this.getTimestamp(), this.toastQueue.length, this.toastQueue);
+        if (!this.toastActive) { // Initiate display if not already active
+            console.log("call showToast1", this.getTimestamp());
             this.showToast1();
         }
     }
@@ -549,8 +489,44 @@ export class UpdateManager {
     //showToast1(message, type = 'info', duration = 3000) {
     showToast1() {
         // Simple toast notification
+        console.log("showToast1 called - toast queue:", this.getTimestamp(), this.toastQueue);
+        console.log("Showing toast1 - queue length:", this.getTimestamp(), "  ",this.toastQueue.length);
         if(this.toastQueue.length === 0) return; // No toasts to show
         const { message, type, duration } = this.toastQueue.shift();
+        console.log("Toast1 details - message:", this.getTimestamp(), "  ", message, "type:", type, "duration:", duration);
+        console.log("Toast1 Remaining queue: ", this.getTimestamp(), "length: ", this.toastQueue.length, "  ", this.toastQueue);
+        this.toastActive = true; // Mark toast as active
+        // simple fade animation
+        setTimeout(() => {
+            console.log("executing end of outer timeout - length: ", this.toastQueue.length, "  ", this.getTimestamp());
+            //setTimeout(() => {
+            //    toast.style.opacity = '0';
+            //    if (toast.parentNode) {
+            //        toast.parentNode.removeChild(toast);
+            //    }
+            //    console.log("Toast removed, showing next if available");
+            //    this.showToast1(); // Show next toast in queue
+            //}, 3000);
+            this.toastActive = false; // Mark toast as inactive
+            this.showToast1(); // Show next toast in queue
+        }, 5000);
+    }
+    
+    getTimestamp() {
+        const now = new Date();
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        return `${mins}:${secs} -- `;
+    }
+
+    //showToast1(message, type = 'info', duration = 3000) {
+    showToast2() {
+        // Simple toast notification
+        console.log("Showing toast1 - queue length:", this.toastQueue.length);
+        if(this.toastQueue.length === 0) return; // No toasts to show
+        const { message, type, duration } = this.toastQueue.shift();
+        console.log("Toast1 details - message:", message, "type:", type, "duration:", duration);
+        console.log("Toast1 Remaining queue: ", this.toastQueue);
         //this.toastInstanceCount = this.toastInstanceCount + 1;
         const toast = document.createElement('div');
         toast.style.cssText = `
@@ -564,6 +540,7 @@ export class UpdateManager {
             z-index: 10002;
             animation: slideIn 0.3s ease;
         `;
+        //toast.style.animation = 'slideOut 0.3s ease';
         
         toast.textContent = message;
         document.body.appendChild(toast);
@@ -571,13 +548,15 @@ export class UpdateManager {
         // simple fade animation
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.3s ease';
+            console.log("Toast fade out started");
             setTimeout(() => {
                 toast.style.opacity = '0';
                 if (toast.parentNode) {
                     toast.parentNode.removeChild(toast);
                 }
+                console.log("Toast removed, showing next if available");
                 this.showToast1(); // Show next toast in queue
-            }, 300);
+            }, 3000);
         }, duration);
     }
     

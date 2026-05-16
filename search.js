@@ -1,3 +1,10 @@
+// pass in the items data to the search class, which will build a map 
+// of code to description and price, and a lowercase index for code to original code. 
+// The search class will then provide methods for searching by code or full text search
+//  on code and description. The search class will also provide a method for refreshing
+//  the data when the items data is updated.
+//
+// Pass in: [[code, description, price], [code, description, price], ...]
 export class ItemSearch {
   constructor(itemsData) {
     this.itemsMap = new Map();

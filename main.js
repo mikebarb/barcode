@@ -12,11 +12,11 @@ import {UpdateManager} from './updateManager.js';
 
 
 // Test deployment
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
+//const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFlT_DxulowVoulqr53RTAhVNRVIEaJY8s6gIc5AA/dev';
 
 //Production deployment
 //const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyd6HhkxfpKPPssB-N8zRJZDnMwyi7z3ZLs2XDc6Q6Vwk36aNzdKYz4ywXilsbSQi1L/exec';
-
+const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbwo3qQ_5ajwNYHbV6zKuU1McI13oGAkaRn-jHaw_XxGOk16Cbuy2WcCAQ5ynFDw1Ii0/exec';
 // Initialize class instances
 const inputManager  = new InputManager();
 const client        = new GoogleSheetsJSONPClient(SCRIPT_URL);
@@ -29,7 +29,12 @@ const storedLastUpdateTime = new localStorageManager('lastUpdateTime');
 // to track if there are unsaved items in the checkout list,
 // so we can warn user if they try to switch away from this view.
 let unsavedCheckoutItems = 0; 
-
+let currentSettings = null;
+// The search managers that need to accessable evrerywhere but populated wihin a initialisation function.
+let searchStockManager = null;
+let searchCheckoutManager = null;
+let searchManager = null;
+    
 // Export the function for module use
 // and also attach to window for legacy scripts
 window.processScanResults = processScanResults;
@@ -50,7 +55,7 @@ export function processScanResults(codeFormat, code) {
         //document.getElementById("scan-display").style.display = 'none';
         //document.getElementById("details-display").style.display = 'block';
         document.getElementById("details-wrapper").style.display = 'block';
-        document.getElementById("details-cost").textContent = foundItem.price.toFixed(2);
+        document.getElementById("details-cost").textContent = Number(foundItem.price).toFixed(2);
         document.getElementById("details-description").textContent = foundItem.description;
     }
     // check what is selected in the dropdown 
@@ -68,19 +73,22 @@ function clearDetailsWrapper(){
     document.getElementById("details-description").textContent = '';
 }
 
+
+
 // Toggle pause/resume
-pauseButton.addEventListener('click', function() {
+//pauseButton.addEventListener('click', togglePauseResume);
+function togglePauseResume(){
     if (isPaused) {
         resumeScanning();
     } else {
         pauseScanning();
     }
-});
+};
 
 // Button event listeners
-startButton.addEventListener('click', startScanning);
-stopButton.addEventListener('click', stopScanning);
-scanButton.addEventListener('click', doScan);
+//startButton.addEventListener('click', startScanning);
+//stopButton.addEventListener('click', stopScanning);
+//scanButton.addEventListener('click', doScan);
 
 function doScan(){
     clearMessage();
@@ -95,6 +103,7 @@ function doScan(){
 // This is for the type of display - sales, returns, stock check etc.
 
 // Toggle dropdown
+/*
 const dropdownSelecteds = document.getElementsByClassName('dropdownSelected');
 Array.from(dropdownSelecteds).forEach( dropdownSelected => {
     dropdownSelected.addEventListener('click', function() {
@@ -103,35 +112,58 @@ Array.from(dropdownSelecteds).forEach( dropdownSelected => {
     });
     console.log("next dropdownSelected.");
 });
+*/
+
+// Toggle dropdown
+//setupDropdownListeners();
+
+function setupDropdownListeners() {
+    const dropdownSelecteds = document.getElementsByClassName('dropdownSelected');
+    Array.from(dropdownSelecteds).forEach( dropdownSelected => {
+        // Pass the function reference, do NOT call it with ()
+        dropdownSelected.addEventListener('click', clickDropdownToggle); 
+    });
+}
+
+function clickDropdownToggle(event){
+    event.stopPropagation(); // Prevent event from bubbling up
+    event.currentTarget.nextElementSibling.classList.toggle('show');
+}
 
 // Select option
-const options = document.querySelectorAll('.dropdownOption');
-console.log("options: ", options);
-options.forEach(option => {
-    option.addEventListener('click', function() {
-        event.stopPropagation(); // Prevent event from bubbling up
-        //const dropdownSelected = document.getElementById('dropdownSelected');
-        const dropdownSelected = this.closest('.customDropdown').querySelector('.dropdownSelected');  
-        console.log("dropdownSelected: ", dropdownSelected);
-        dropdownSelected.textContent = this.textContent;
-        dropdownSelected.setAttribute('data-value', this.getAttribute('data-value'));
-        //const dropdownOptions = document.getElementById('dropdownOptions');
-        const dropdownOptions = dropdownSelected.nextElementSibling;
-        dropdownOptions.classList.remove('show');
-        console.log('Selected:', this.getAttribute('data-value'));
-        optionsDisplay();
+//setupSelectOptionListeners();
+function setupSelectOptionListeners() {
+    const options = document.querySelectorAll('.dropdownOption');
+    options.forEach(option => {
+        option.addEventListener('click', clickSelectOption);
     });
-});
+}
+function clickSelectOption(event){
+    event.stopPropagation(); // Prevent event from bubbling up
+    const dropdownSelected = event.currentTarget.closest('.customDropdown').querySelector('.dropdownSelected');  
+    console.log("dropdownSelected: ", dropdownSelected);
+    dropdownSelected.textContent = event.currentTarget.textContent;
+    dropdownSelected.setAttribute('data-value', event.currentTarget.getAttribute('data-value'));
+    const dropdownOptions = dropdownSelected.nextElementSibling;
+    dropdownOptions.classList.remove('show');
+    console.log('Selected:', event.currentTarget.getAttribute('data-value'));
+    optionsDisplay();
+}
 
 // Close dropdown when clicking outside
-document.addEventListener('click', function(event) {
+// document.addEventListener('click', clickOutsideDropdown);
+
+function clickOutsideDropdown(event) {
     if (!event.target.closest('.customDropdown')) {
-        const dropdownOptionss = document.getElementsByClassName('dropdownOptions');
-        Array.from(dropdownOptionss).forEach( dropdownOptions => {
-            dropdownOptions.classList.remove('show');
-        });
+        closeDropdown();
     }
-});
+}
+function closeDropdown(){
+    const dropdownOptionss = document.getElementsByClassName('dropdownOptions');
+    Array.from(dropdownOptionss).forEach( dropdownOptions => {
+            dropdownOptions.classList.remove('show');
+    });
+}
 
 // Initialize dropdown with default value - Activity Type
 //**document.getElementById("dropdownOptions").firstElementChild.click();
@@ -163,42 +195,40 @@ export function getSaleTypeOption() {
 //---End of-----drop down menu event listener and assoicated functions ----------------
 
 //-------- numeric input event listener and assoicated functions ----------------
-// Quantity of items to be purchased.
-const customInput = document.getElementById('quantityNumbericInput');
-const decrementBtn = document.querySelector('.numeric-decrement');
-const incrementBtn = document.querySelector('.numeric-increment');
+// *** Quantity of items to be purchased.***
+// Input Validation - numberic quantity field - only allow numbers to be entered.
+//document.getElementById('quantityNumbericInput').addEventListener('input', cleanNumbericInput);
+function cleanNumbericInput(event){
+    event.currentTarget.value = event.currentTarget.value.replace(/[^0-9]/g, '');
+}
 
-// Input validation
-customInput.addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '');
-});
-
-// Decrement value
-decrementBtn.addEventListener('click', function() {
-    let value = parseFloat(customInput.value) || 0;
-    customInput.value = value > 0 ? value - 1 : 0;
-    customInput.dispatchEvent(new Event('change'));
-});
+// Decrement value in quantity field.
+//document.querySelector('.numeric-decrement').addEventListener('click', decrementValue);
+function decrementValue(event){
+    const inputElement = event.currentTarget.parentElement.querySelector('input');
+    let value = parseFloat(inputElement.value) || 0;
+    inputElement.value = value > 0 ? value - 1 : 0;
+    inputElement.dispatchEvent(new Event('change'));
+};
 
 // Increment value
-incrementBtn.addEventListener('click', function() {
-    let value = parseFloat(customInput.value) || 0;
-    customInput.value = value + 1;
-    customInput.dispatchEvent(new Event('change'));
-});
-
-// Change event
-customInput.addEventListener('change', function() {
-    console.log('Numeric value changed:', this.value);
-});
+//document.querySelector('.numeric-increment').addEventListener('click', decrementValue);
+function incrementValue(event){
+    const inputElement = event.currentTarget.parentElement.querySelector('input');
+    let value = parseFloat(inputElement.value) || 0;
+    inputElement.value = value + 1;
+    inputElement.dispatchEvent(new Event('change'));
+}
 
 //---End of----- numeric input event listener and associated functions ----------------
 
 //------ add button event listener and associated functions ---------------------
 // This adds the displayed item to the purchased items list - dynamic display area.
-document.getElementById('add-item-button').addEventListener('click', function() {
-    addItemButtonClicked();
-});
+//document.getElementById('add-item-button').addEventListener('click', function() {
+//    addItemButtonClicked();
+//});
+
+//document.getElementById('add-item-button').addEventListener('click', addItemButtonClicked);
 
 function addItemButtonClicked(){
     console.log('Add Item Button clicked.');
@@ -255,9 +285,9 @@ function addItem(){
     document.getElementById("input-code").value = '';
 }
 
-function addLineItemCheckout(consignment, code, quantity, price, description){  
+function addLineItemCheckout(consignment, code, quantity, price, description){
     console.log("addLineItemCheckout: ", consignment, code, quantity, price, description);
-    const eleProductList = document.getElementById("items-to-checkout"); 
+    const eleProductList = document.getElementById("items-to-checkout");
     const eleProductItem = document.createElement('div');     // product item
     eleProductItem.classList.add("product-item");
     //creat the two html lines for this item.
@@ -295,12 +325,12 @@ function addLineItemCheckout(consignment, code, quantity, price, description){
     // create the second line (description) for the item
     const eleItemLine2 = document.createElement('div');
     eleItemLine2.classList.add("description");
+    console.log("description: ", description);
     eleItemLine2.textContent = description;
     eleProductItem.appendChild(eleItemLine2);
     // Now insert into the page / dom.
     eleProductList.prepend(eleProductItem);
 }
-
 
 //--------- does the dom build for adding an item to the list.
 // used by mutiple functions (addItem, addDiscount) that append to this list.
@@ -365,12 +395,14 @@ function clearMessage(){
     eleMessage.textContent = "";
 }
 
-// Need code to act on this item's delete button being clicked in sales area.
-document.getElementById("items-to-purchase").addEventListener('click', (e) => {
+// delete button being clicked in sales area.
+//document.getElementById("items-to-purchase").addEventListener('click', clickSalesItemDelete)
+function clickSalesItemDelete(e){
     console.log("event on items-to-purchase", e);
     clearMessage();
-    if (e.target.matches('.delete-btn')) {
-        e.target.closest('.product-item').remove();
+    const thisButton = e.target; 
+    if (thisButton.matches('.delete-btn')) {
+        thisButton.closest('.product-item').remove();
         calculateSaleTotal();
         // need to check if any items left
         const eleItemsToPurchase = document.getElementById("items-to-purchase");
@@ -380,47 +412,46 @@ document.getElementById("items-to-purchase").addEventListener('click', (e) => {
             document.getElementById("sale-total").style.display = 'none';
         }
     }
-});
+}
 
 // Need code to act on this item's delete button being clicked in checkout area.
-document.getElementById("items-to-checkout").addEventListener('click', (e) => {
+//document.getElementById("items-to-checkout").addEventListener('click', clickCheckoutItemDelete);
+function clickCheckoutItemDelete(e){
     console.log("event on items-to-checkout", e);
     clearMessage();
     if (e.target.matches('.delete-btn')) {
         e.target.closest('.product-item').remove();
     }
-});
+};
 
+function initialiseDisplayLayout(){
+    // on initialisation, hide the sale total area 
+    document.getElementById("sale-total").style.display = 'none';
 
+    // on initialisation, hide the message area.
+    document.getElementById("message").style.display = 'none';
 
-// on initialisation, hide the sale total area 
-document.getElementById("sale-total").style.display = 'none';
-
-// on initialisation, hide the message area.
-document.getElementById("message").style.display = 'none';
-
-// on initialisation, hide the discount area.
-document.getElementById("discount-display").style.display='none';
+    // on initialisation, hide the discount area.
+    document.getElementById("discount-display").style.display='none';
+}
 
 // need code to act on the "discount" button which shows the discount area
-document.getElementById("show-discount").addEventListener('click', (e) => {
+//document.getElementById("show-discount").addEventListener('click', showDiscountArea);
+function showDiscountArea(e){
     console.log("event on show-discount", e);
     document.getElementById("discount-display").style.display='flex';
-});
+}
 
 // need code to act on the discount "exit" button which hides the discount area
-document.getElementById("discount-cancel").addEventListener('click', (e) => {
-    console.log("event on discount-cancel", e);
-    hideDiscountArea();
-});
-
+//document.getElementById("discount-cancel").addEventListener('click', hideDiscountArea);
 function hideDiscountArea(){
     document.getElementById("discount-display").style.display='none';
     document.getElementById("discount-amount").value = "";
 }
 
 // need code to act on the "add discount" button
-document.getElementById("discount-add").addEventListener('click', (e) => {
+//document.getElementById("discount-add").addEventListener('click', addDiscount);
+function addDiscount(e){
     console.log("event on discount-add", e);
     // add the line item - discount
     clearMessage();
@@ -444,8 +475,8 @@ document.getElementById("discount-add").addEventListener('click', (e) => {
     if(eleItems.length == 0){
         document.getElementById("sale-total").style.display = 'none';
     }
-    hideDiscountArea()
-});
+    hideDiscountArea();
+}
 
 // Check if the Ausil barcode is already in the items list
 function checkCodePresent(checkCode){
@@ -497,7 +528,9 @@ function calculateSaleTotal(){
 }
 
 // code to act on the Purchase button
-document.getElementById("finalise-purchase").addEventListener('click', (e) => {
+//document.getElementById("finalise-purchase").addEventListener('click', clickPurchaseButton);
+    
+function clickPurchaseButton(e){
     console.log("event on finalise-purchase", e);
     // build the array 
     //[time-gmt, email, name, comment, items:[code,qty,price]]
@@ -525,7 +558,6 @@ document.getElementById("finalise-purchase").addEventListener('click', (e) => {
     //** const storeSales = new localStorageManager('sales'); **
     storeSales.addTransaction(arraySale);
     
- 
     // --*** diagnostic purposes only ***--
     // clear the local storage for testing
     //storeScans.clearTransactions();
@@ -539,14 +571,10 @@ document.getElementById("finalise-purchase").addEventListener('click', (e) => {
     calculateSaleTotal();
     document.getElementById("quantityNumbericInput").value = 1;
     setMessage("Purchase Completed.");
-})
+}
 
 // code to act on the Check-out Save button
-document.getElementById("save-checkout").addEventListener('click', (e) => {
-    console.log("event on saving checkout items", e);
-    saveCheckoutItems();
-})
-
+//document.getElementById("save-checkout").addEventListener('click', saveCheckoutItems);
 function saveCheckoutItems(){
 // build the array 
     //[consignment,code,qty,price, description]]
@@ -578,18 +606,22 @@ function saveCheckoutItems(){
 function repopulateCheckout(){
     const arrayCheckout = storeCheckout.getTransactions();
     console.log("checkoutItems: ", arrayCheckout);
+    // Need to clear the area first before repopulating
+    const eleItemsToCheckout = document.getElementById("items-to-checkout");
+    eleItemsToCheckout.innerHTML = ''; // Clear existing items
     if (arrayCheckout.length === 0) {
         console.log("No checkout items found.");
         return;
     }
-    const eleItemsToCheckout = document.getElementById("items-to-checkout");
-    eleItemsToCheckout.innerHTML = ''; // Clear existing items
     //arrayCheckout[0].forEach(item => {
     for (let i=arrayCheckout[0].length - 1; i >= 0; i--){
         let item = arrayCheckout[0][i];
         console.log("checkout item: ", item);
         //function addLineItemCheckout(consignment, code, quantity, price, description) 
-        addLineItemCheckout(item[0], item[1], Number(item[2]), Number(item[3], item[4]));
+        addLineItemCheckout(item[0], item[1], Number(item[2]), Number(item[3]), item[4]);
+        console.log("add checkout item - description: ", item[1]);
+        //addLineItemCheckout(consignment, code, quantity, price, description)
+        //addLineItemCheckout(item[4], item[0], Number(item[3]), Number(item[2]), item[1]);   
     };
 }
 
@@ -620,7 +652,8 @@ function formatGmtDateTimeNumber(date) {
 //---End of--- add button event listener and associated functions ---------------------
 
 //----add button event listener for sales upload to google sheets and associated functions ---------------------
-document.getElementById("upload-sales").addEventListener('click', (e) => {
+//document.getElementById("upload-sales").addEventListener('click', clickUploadSales);
+function clickUploadSales(){
     //console.log("event on upload sales", e);
     // if phone is offline, abort
     if (!updateManager.getStatus().isOnline) {
@@ -638,7 +671,7 @@ document.getElementById("upload-sales").addEventListener('click', (e) => {
         console.log("upload checkout items to google sheets");
         uploadCheckout();
     }
-});
+}
 
 function uploadSales(){
     //console.log("event on upload sales", e);
@@ -683,8 +716,6 @@ function uploadSales(){
 };
 
 function uploadCheckout(){
-    //console.log("event on upload checkout", e);
-    
     const checkoutStored = storeCheckout.getTransactions();
     if (checkoutStored.length == 0){
         setMessage("No checkout items to upload.");
@@ -711,7 +742,8 @@ function uploadCheckout(){
 
 
 //----add button event listener to download stock info from google sheets and associated functions ---------------------
-document.getElementById("download-stock").addEventListener('click', (e) => {
+//document.getElementById("download-stock").addEventListener('click', clickDownloadStock);
+function clickDownloadStock(e){
     console.log("event to download stock", e);
     // if phone is offline, abort
     if (!updateManager.getStatus().isOnline) {
@@ -723,15 +755,16 @@ document.getElementById("download-stock").addEventListener('click', (e) => {
     let stockInfo = readGoogleSheet("Stock");
     console.log("stock info from google sheets: ", stockInfo);
 
-    const wasLinked = searchStockManager === searchManager;  
+    const wasLinked = searchStockManager === searchManager;
     searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
     if (wasLinked ) {
         searchManager = searchStockManager;
     }
-});
+}
 
 //----add button event listener to download checkout info from google sheets and associated functions ---------------------
-document.getElementById("download-checkout").addEventListener('click', (e) => {
+//document.getElementById("download-checkout").addEventListener('click', clickDownloadCheckout);
+function clickDownloadCheckout(e){
     console.log("event to download checkout", e);
     // if phone is offline, abort
     if (!updateManager.getStatus().isOnline) {
@@ -754,16 +787,28 @@ document.getElementById("download-checkout").addEventListener('click', (e) => {
     console.log("checkout stored: ", checkoutStored);
     let checkoutInfo = readGoogleSheet("taken");
     console.log("checkout info from google sheets: ", checkoutInfo);
-
-    const wasLinked = searchCheckoutManager === searchManager;  
-    searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+    // Need to reformat the storeCheckout transactions to be in the format
+    // of array of arrays for the ItemSearch function.
+    let checkOutContent = storeCheckout.getTransactions()[0] || [[]];
+    console.log("checkout content before reformat: ", checkOutContent);
+    //Need to pass in [[code, description, price]] to the ItemSearch function,
+    // so need to reformat the checkout content
+    checkOutContent = checkOutContent.map(item=>{
+        return [item[1], item[4], item[3]];
+    });
+    console.log("checkout content after reformat: ", checkOutContent);
+    // now create a new search manager with this checkout content and link to 
+    // the main search manager if it was previously linked to the checkout search manager.
+    const wasLinked = searchCheckoutManager === searchManager;
+    searchCheckoutManager = new ItemSearch(checkOutContent);
     if (wasLinked ) {
         searchManager = searchCheckoutManager;
     }
-});
+}
 
-//----add button event listener to download stock info from google sheets and associated functions ---------------------
-document.getElementById("clear-local-stores").addEventListener('click', (e) => {
+//----add button event listener to clear local storage ---------------------
+//document.getElementById("clear-local-stores").addEventListener('click', clickClearLocalStores);
+function clickClearLocalStores(e){
     console.log("event to clear all local storage", e);
     // if phone is offline, abort
     if (!updateManager.getStatus().isOnline) {
@@ -774,9 +819,11 @@ document.getElementById("clear-local-stores").addEventListener('click', (e) => {
     storeSales.clearTransactions();
     const salesStored = storeSales.getTransactions();
     console.log("sales stored: ", salesStored);
+    
     storeStock.clearTransactions();
     const stockStored = storeStock.getTransactions();
     console.log("stock stored: ", stockStored);
+
     storeCheckout.clearTransactions();
     const checkoutStored = storeCheckout.getTransactions();
     console.log("checkout stored: ", checkoutStored);
@@ -788,14 +835,25 @@ document.getElementById("clear-local-stores").addEventListener('click', (e) => {
     }
     console.log("searchStockManager has content", searchStockManager.isSearchContentPresent);
 
+    // Need to reformat the storeCheckout transactions to be in the format
+    // of array of arrays for the ItemSearch function.
+    let checkOutContent = storeCheckout.getTransactions()[0] || [[]];
+    console.log("1 checkout content before reformat: ", checkOutContent);
+    //Need to pass in [[code, description, price]] to the ItemSearch function,
+    // so need to reformat the checkout content
+    checkOutContentcheckOutContent.map(item=>{
+        return [item[1], item[4], item[3]];
+    });
+    console.log("1 checkout content after reformat: ", checkOutContent);
+
     wasLinked = searchCheckoutManager === searchManager;  
-    searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+    //searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
+    searchCheckoutManager = new ItemSearch(checkOutContent);
     if (wasLinked ) {
         searchManager = searchCheckoutManager;
     }
     console.log("searchCheckoutManager has content", searchCheckoutManager.isSearchContentPresent);
-});
-
+}
 
 // Hide upload and download buttons - used when offline.
 export function hideUploadDownload(){
@@ -808,13 +866,26 @@ export function showUploadDownload(){
     //document.getElementById("download-stock").style.backgroundColor = "rgb(0, 122, 255)";
 }
 
-// Initialize the search manager for searching against stock data
-let searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
-// Initialize the search manager for searching against stock data
-let searchCheckoutManager = new ItemSearch(storeCheckout.getTransactions()[0] || [[]]);
-let searchManager = searchCheckoutManager;
-// do some code
-
+//------ Initialse the search managers with the current local storage content on page load. -------
+//initialiseSearchManagers();
+function initialiseSearchManagers(){
+    console.log("initialiseSearchManagers called.");
+    // Initialize the search manager for searching against stock data
+    searchStockManager = new ItemSearch(storeStock.getTransactions()[0] || [[]]);
+    // Initialize the search manager for searching against checkout data
+    // Need to reformat the storeCheckout transactions to be in the format
+    // of array of arrays for the ItemSearch function.
+    let checkOutContent = storeCheckout.getTransactions()[0] || [[]];
+    //Need to pass in [[code, description, price]] to the ItemSearch function,
+    // so need to reformat the checkout content
+    checkOutContent = checkOutContent.map(item=>{
+        return [item[1], item[4], item[3]];
+    });
+    
+    searchCheckoutManager = new ItemSearch(checkOutContent);
+    // Set this as sales is selected initially and Checkout data is used for searching here.
+    searchManager = searchCheckoutManager;
+}
 // Clear the sold items display
 function cleardisplayPurchases() {
     const purchasesContainer = document.getElementById('purchases-container');
@@ -828,7 +899,6 @@ function cleardisplaySold() {
     soldContainer.innerHTML = ''; // Clear previous content
 
 }
-
 
 // This retrieves and displays all Purchases from local storage
 function displaySold() {
@@ -1111,35 +1181,37 @@ export class Settings {
     }
 }
 
-const currentSettings = new Settings();
-document.getElementById("settingsSpreadSheetUrlInput").value = currentSettings.getSpreadSheetUrl();
-document.getElementById("settingsDeviceIdInput").value = currentSettings.getDeviceId();
+function initialiseSettings(){
+    // On page load, get the current settings and populate the settings fields with these.
+    currentSettings = new Settings();
+    document.getElementById("settingsSpreadSheetUrlInput").value = currentSettings.getSpreadSheetUrl();
+    document.getElementById("settingsDeviceIdInput").value = currentSettings.getDeviceId();
 
+    document.getElementById("settingsAddSpreadSheetUrl").addEventListener('click', (e) => {
+        const eleInputSpreadSheetUrl = document.getElementById("settingsSpreadSheetUrlInput");
+        console.log("event to update spread sheet id", e);
+        console.log("spread sheet id", eleInputSpreadSheetUrl.value);
 
-document.getElementById("settingsAddSpreadSheetUrl").addEventListener('click', (e) => {
-    const eleInputSpreadSheetUrl = document.getElementById("settingsSpreadSheetUrlInput");
-    console.log("event to update spread sheet id", e);
-    console.log("spread sheet id", eleInputSpreadSheetUrl.value);
+        const result = confirm("Are you sure you want to proceed with updating the Spreadsheet Url?");
+        if (result) {
+            console.log("User clicked OK/Proceed");
+            currentSettings.setSpreadSheetUrl(eleInputSpreadSheetUrl.value);
+        }
+    });
 
-    const result = confirm("Are you sure you want to proceed with updating the Spreadsheet Url?");
-    if (result) {
-        console.log("User clicked OK/Proceed");
-        currentSettings.setSpreadSheetUrl(eleInputSpreadSheetUrl.value);
-    }
-});
+    document.getElementById("settingsAddDeviceId").addEventListener('click', (e) => {
+        //document.getElementById("download-stock").addEventListener('click', (e) => {
+        const eleInputDeviceId = document.getElementById("settingsDeviceIdInput");
+        console.log("event to update device id", e);
+        console.log("device id", eleInputDeviceId.value);
 
-document.getElementById("settingsAddDeviceId").addEventListener('click', (e) => {
-//document.getElementById("download-stock").addEventListener('click', (e) => {
-    const eleInputDeviceId = document.getElementById("settingsDeviceIdInput");
-    console.log("event to update device id", e);
-    console.log("device id", eleInputDeviceId.value);
-
-    const result = confirm("Are you sure you want to proceed with updating the Device Id?");
-    if (result) {
-        console.log("User clicked OK/Proceed");
-        currentSettings.setDeviceId(eleInputDeviceId.value);
-    }
-});
+        const result = confirm("Are you sure you want to proceed with updating the Device Id?");
+        if (result) {
+            console.log("User clicked OK/Proceed");
+            currentSettings.setDeviceId(eleInputDeviceId.value);
+        }
+    });
+}
 
 /* Test with different URL formats
 const testUrls = [
@@ -1182,8 +1254,6 @@ function extractSpreadsheetId(url) {
     
     return null;
 }
-
-
 
 //-------------------- end of settings ----------------------------------
 
@@ -1259,7 +1329,22 @@ async function readGoogleSheet(sheetName) {
                 console.log("about to clear storeCheckout");
                 storeCheckout.clearTransactions();
                 console.log("checkout - content to load: ", sheetContent);
+                // Sheet order is different to local storage order, so need to re-order the data before storing locally.
+                // re-order to be: [consignment, code, quantity, price, description, deviceId]
+                sheetContent = sheetContent.map(row => {
+                    return [row[4], row[0], row[3], row[2], row[1], row[5]];                
+                });
                 storeCheckout.addTransaction(sheetContent);
+
+                // Need to reformat the storeCheckout transactions to be in the format
+                // of array of arrays for the ItemSearch function.
+                console.log("1 checkout content before reformat: ", sheetContent);
+                //Need to pass in [[code, description, price]] to the ItemSearch function,
+                // so need to reformat the checkout content
+                sheetContent.map(item=>{
+                    return [item[1], item[4], item[3]];
+                });
+                console.log("1 checkout content after reformat: ", sheetContent);
                 searchCheckoutManager.refreshData(sheetContent);
                 const checkoutStored = storeCheckout.getTransactions();
                 console.log("readGoogleSheet - check read back: checkout stored: ", checkoutStored);            
@@ -1285,22 +1370,18 @@ async function readGoogleSheet(sheetName) {
 
 // Add event listener on the Ausil code entry input field to clear search results
 // when user alters the code. At this point, the displayed details become invalid.
-document.getElementById("input-code").addEventListener('input', (e) => {
-    console.log("event on input-code change - clear ausil item details", e);
-    clearDetailsWrapper();
-});
+//document.getElementById("input-code").addEventListener('input', clearDetailsWrapper);
 
 //-------add button event listener for search associated functions ---------------------
 
 // ==================== SEARCH FUNCTIONS ====================
-let globalResultsArray = [];
+//???? let globalResultsArray = [];
 
-document.getElementById("details-search").addEventListener('click', doSearchTextFromButton);
-document.getElementById("search-input").addEventListener('input', doSearchText);
-//document.getElementById("search-input").addEventListener('keydown', doSearchText);
+//document.getElementById("details-search").addEventListener('click', doSearchTextFromButton);
+//document.getElementById("search-input").addEventListener('input', doSearchText);
 
 // Hide the search results area on initialisation
-document.getElementById("search-container").style.display = 'none';
+//document.getElementById("search-container").style.display = 'none';
 
 function doSearchTextFromButton(){
     clearMessage();
@@ -1474,21 +1555,23 @@ class SearchComponent {
 
 //---End of--- add button event listener for search associated functions ---------------------
 
-
-
-// Handle PWA lifecycle events
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden && isScanning && scanningActive) {
+// --------- Handle scanning activity on lifecycle even  ---------------------
+// Visibility change - pause any scanning
+//document.addEventListener('visibilitychange', visibilitychangeScannerActivity);
+function visibilitychangeScannerActivity(){
+   if (document.hidden && isScanning && scanningActive) {
         pauseScanning(); // Pause when app is backgrounded
     }
-});
+}
 
-// Handle page unload
-window.addEventListener('beforeunload', function() {
+
+// Before page unload - stop scanning
+//window.addEventListener('beforeunload', pageunloadStopScanningActivity);
+function pageunloadStopScanningActivity() {
     if (isScanning) {
         stopScanning();
     }
-});
+}
 
 // Export the function for module use
 // and also attach to window for legacy scripts
@@ -1642,19 +1725,73 @@ function getOnlineStatusFromUpdateManager() {
 async function initialiseApp() {
     console.log('App: Initializing PWA...');
     
-    // Fetch version early (non-blocking)
-    
-    // await fetchVersion();
-    // APP_URL = `./sw.js?v=${APP_VERSION}`;
-    // console.log('App URL with version:', APP_URL);
-    
 
-    // YOUR EXISTING INITIALIZATION CODE HERE
-    // setupScanner();
-    // loadSettings();
-    // setupUIEventListeners();
-    // ... all your existing setup functions
+    /*=======================  Init Code  =====================================*/
+    pauseButton.addEventListener('click', togglePauseResume);
+    startButton.addEventListener('click', startScanning);
+    stopButton.addEventListener('click', stopScanning);
+    scanButton.addEventListener('click', doScan);
+
+    setupDropdownListeners();
+    setupSelectOptionListeners();
+    document.addEventListener('click', clickOutsideDropdown);
+
+    // Input Validation - numberic quantity field - only allow numbers to be entered.
+    document.getElementById('quantityNumbericInput').addEventListener('input', cleanNumbericInput);
+    // increment and decrement buttons for quantity field
+    document.querySelector('.numeric-increment').addEventListener('click', incrementValue);
+    document.querySelector('.numeric-decrement').addEventListener('click', decrementValue);
+
+    // Add Item Button event listener - adds the displayed item to the purchased items list.
+    document.getElementById('add-item-button').addEventListener('click', addItemButtonClicked);
+    // delete button being clicked in sales area and similarily the checkout area.
+    document.getElementById("items-to-purchase").addEventListener('click', clickSalesItemDelete)
+    document.getElementById("items-to-checkout").addEventListener('click', clickCheckoutItemDelete);
+
+    initialiseDisplayLayout();
+
+    // "discount" button which shows the discount area
+    document.getElementById("show-discount").addEventListener('click', showDiscountArea);
+
+    // discount "exit" button which hides the discount area
+    document.getElementById("discount-cancel").addEventListener('click', hideDiscountArea);
+    // "add discount" button
+    document.getElementById("discount-add").addEventListener('click', addDiscount);
+    // Purchase button
+    document.getElementById("finalise-purchase").addEventListener('click', clickPurchaseButton);
+    // Check-out Save button
+    document.getElementById("save-checkout").addEventListener('click', saveCheckoutItems);
+    //add button event listener for sales upload to google sheets
+    document.getElementById("upload-sales").addEventListener('click', clickUploadSales);
+    //button event listener to download stock info from google sheets 
+    document.getElementById("download-stock").addEventListener('click', clickDownloadStock);
+    //button event listener to download checkout info from google sheets
+    document.getElementById("download-checkout").addEventListener('click', clickDownloadCheckout);
+    //button event listener to clear local storage
+    document.getElementById("clear-local-stores").addEventListener('click', clickClearLocalStores);
+
+    initialiseSettings();  // populate settings from local storage.
+    initialiseSearchManagers();
+
+    // Add event listeners for search functionality
+    document.getElementById("details-search").addEventListener('click', doSearchTextFromButton);
+    document.getElementById("search-input").addEventListener('input', doSearchText);
+    // Hide the search results area on initialisation
+    document.getElementById("search-container").style.display = 'none';
     
+    // Handle scanning activity on lifecycle events
+    // Visibility change - pause any scanning
+    document.addEventListener('visibilitychange', visibilitychangeScannerActivity);
+    // Before page unload - stop scanning
+    window.addEventListener('beforeunload', pageunloadStopScanningActivity);
+
+    // Add event listener on the Ausil code entry input field to clear search results
+    // when user alters the code. At this point, the displayed details become invalid.
+    document.getElementById("input-code").addEventListener('input', clearDetailsWrapper);
+
+    /*=========================================================================*/
+
+   
     // ADD THIS LINE to initialize the UpdateManager
     //window.updateManager = new UpdateManager();
     //const updateManager = new UpdateManager(APP_VERSION, onlineFromFetch);
@@ -1670,42 +1807,15 @@ async function initialiseApp() {
     // Initialize dropdown with default value - Sale Type
     document.getElementById("dropdownSaleTypeOptions").firstElementChild.click();
 
-
-
     console.log('App: Initialization complete');
     setMessage("Application initialised.")
+
+    updateManager.showToast("test message 1", "info", 5000);
+    updateManager.showToast("test message 2", "info", 5000);
+    updateManager.showToast("test message 3", "info", 5000);
+    updateManager.showToast("test message 4", "info", 5000);
+    updateManager.showToast("test message 5", "info", 5000);
 }
-
-
-// Construct Service Worker URL with version parameter
-// Version loading from central json - version.json
-/*
-let APP_URL;
-let APP_VERSION = "xxx";   //Hard fallback if fetch fails entirely
-let onlineFromFetch = false; // Flag to indicate if version was loaded from fetch   
-
-async function fetchVersion() {
-    try {
-        const response = await fetch('./version.json', { cache: 'no-cache' });  // Fresh fetch for accuracy
-        if (!response.ok) throw new Error('Version file not found');
-        const data = await response.json();
-        if (data.version !== undefined) {
-            APP_VERSION = data.version;
-            console.log('Loaded version from JSON:', APP_VERSION);
-            onlineFromFetch = true;
-        } else {
-            console.log('Version not in JSON - using fallback:', APP_VERSION);
-        }        
-        return APP_VERSION;
-    } catch (error) {
-        console.warn('Failed to load version.json - using fallback:', error);
-        return APP_VERSION;  // Stick with default
-    }
-}
-fetchVersion
-// Expose APP_VERSION after fetch (for UpdateManager)
-window.getAppVersion = () => APP_VERSION;
-*/
 
 function updateUI() {
     // Your UI logic: Update counts from localStorage, toggle sync panel if online

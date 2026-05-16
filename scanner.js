@@ -72,10 +72,10 @@
         pauseScanning();
 
         // post processing - store details locally
-        if(getSelectedOption() === "showSales") {
+        if(getSelectedOption() === "showSales" ||
+           getSelectedOption() === "showCheckout") {
             processScanResults(codeFormat, code);
         }
-
         // Now hide the scan area if appropriate
         /////////optionsDisplay();
     }
@@ -169,7 +169,7 @@
         areaScanDisplay.style.display = 'block'; 
 
         // put into the inputCode field in the main data-entry area
-        const inputField = document.getElementById('inputCode');
+        const inputField = document.getElementById('input-code');
         inputField.value = "";
 
         console.log("Trigger scan requested.");
